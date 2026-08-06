@@ -60,6 +60,7 @@ export function GoogleButton({ text = "Continue with Google", onSuccessRedirect 
           client_id: clientId,
           callback: handleGoogleAuth,
           auto_select: false,
+          use_fedcm_for_prompt: false,
         });
 
         if (googleBtnContainerRef.current) {
@@ -83,6 +84,7 @@ export function GoogleButton({ text = "Continue with Google", onSuccessRedirect 
       script.async = true;
       script.defer = true;
       script.onload = initGoogle;
+      script.onerror = () => setGsiError(true);
       document.head.appendChild(script);
     }
   }, [clientId, text]);

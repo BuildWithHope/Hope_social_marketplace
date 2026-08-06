@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Bell, Menu, Search, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getUserProfile } from "@/lib/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +19,29 @@ import { Badge } from "@/components/ui/badge";
 import { notifications } from "@/data/mock";
 
 export function Navbar({ onOpenMobile }) {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        if (token) {
+          const profile = await getUserProfile();
+          setUser(profile);
+        }
+      } catch (err) {
+        setUser(null);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const balanceVal = user ? parseFloat(user.wallet_balance || 0) : 0;
+  const formattedBalance = `₦${balanceVal.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
+  const initials = user
+    ? (user.first_name?.[0] || user.username?.[0] || "U").toUpperCase()
+    : "HS";
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur md:px-6">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onOpenMobile}>
@@ -37,7 +62,7 @@ export function Navbar({ onOpenMobile }) {
           className="hidden sm:inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-sm hover:bg-muted/50 font-semibold"
         >
           <Wallet className="h-4 w-4 text-primary" />
-          <span className="font-medium text-foreground">₦1,284,900.00</span>
+          <span className="font-medium text-foreground">{formattedBalance}</span>
         </Link>
 
         <DropdownMenu>
@@ -67,13 +92,13 @@ export function Navbar({ onOpenMobile }) {
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
-                  HS
+                  {initials}
                 </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>My account</DropdownMenuLabel>
+            <DropdownMenuLabel>{user ? `@${user.username}` : "My account"}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/profile">Profile</Link>
@@ -85,21 +110,29 @@ export function Navbar({ onOpenMobile }) {
               <Link href="/support">Support</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/register">Create Account</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link
-                href="/login"
-                onClick={() => {
-                  if (typeof window !== "undefined") {
-                    localStorage.removeItem("token");
-                  }
-                }}
-              >
-                Log out
-              </Link>
-            </DropdownMenuItem>
+            {user ? (
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/login"
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      localStorage.removeItem("token");
+                    }
+                  }}
+                >
+                  Log out
+                </Link>
+              </DropdownMenuItem>
+            ) : (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link href="/login">Sign In</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/register">Create Account</Link>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -31,7 +31,11 @@ export default function Login() {
       if (data.token) {
         localStorage.setItem("token", data.token);
       }
-      router.push("/");
+      if (data.user?.is_staff || data.user?.is_superuser) {
+        window.location.href = "/admin";
+      } else {
+        window.location.href = "/";
+      }
     } catch (err) {
       toast.error(err.message || "Invalid credentials. Please try again.");
     } finally {

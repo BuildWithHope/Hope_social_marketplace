@@ -1,9 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Wallet, ShoppingBag, Loader2, CheckCircle2, XCircle,
-  Plus, ArrowRight, TrendingUp, Sparkles, ShieldCheck, Headphones,
+  Plus, ArrowRight, TrendingUp, Sparkles, Headphones,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -16,7 +17,8 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
 } from "recharts";
-import { recentOrders, monthlySpending, topServices, platformIcons } from "@/data/mock";
+import { recentOrders, monthlySpending as mockMonthlySpending, topServices, platformIcons } from "@/data/mock";
+import { getDashboardStats, getUserProfile } from "@/lib/api";
 
 const topServicesWithColors = [
   { name: "IG Followers", v: 42, color: "#E1306C" },
@@ -26,10 +28,42 @@ const topServicesWithColors = [
 ];
 
 export default function DashboardHome() {
+  const [user, setUser] = useState(null);
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        if (token) {
+          const [uData, sData] = await Promise.all([
+            getUserProfile().catch(() => null),
+            getDashboardStats().catch(() => null),
+          ]);
+          setUser(uData);
+          setStats(sData);
+        }
+      } catch (err) {
+        // Fallback
+      }
+    };
+    loadData();
+  }, []);
+
+  const balanceVal = stats?.wallet_balance ?? user?.wallet_balance ?? 0;
+  const formattedBalance = `₦${parseFloat(balanceVal || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
+  const displayName = user?.first_name || user?.username || "Guest";
+
+  const totalOrders = stats?.total_orders ?? 0;
+  const activeOrders = stats?.active_orders ?? 0;
+  const completedOrders = stats?.completed_orders ?? 0;
+  const failedOrders = stats?.failed_orders ?? 0;
+  const chartData = stats?.monthly_spending?.map((m) => ({ m: m.month, v: m.amount })) || mockMonthlySpending;
+
   return (
     <div>
       <PageHeader
-        title="Welcome back, Hope"
+        title={`Welcome back, ${displayName}`}
         description="Here's what's happening across your marketplace today."
         actions={
           <>
@@ -40,11 +74,11 @@ export default function DashboardHome() {
       />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-        <StatCard label="Wallet Balance" value="₦1,284,900.00" delta="+₦120,000 this week" icon={Wallet} tone="primary" />
-        <StatCard label="Total Orders" value="1,284" delta="+64 this month" icon={ShoppingBag} />
-        <StatCard label="Active Orders" value="27" delta="Processing now" icon={Loader2} />
-        <StatCard label="Completed" value="1,198" delta="93.3% success" icon={CheckCircle2} tone="primary" />
-        <StatCard label="Failed" value="59" delta="Auto-refunded" icon={XCircle} tone="danger" />
+        <StatCard label="Wallet Balance" value={formattedBalance} delta={balanceVal > 0 ? "Active Balance" : "₦0.00 balance"} icon={Wallet} tone="primary" />
+        <StatCard label="Total Orders" value={totalOrders.toString()} icon={ShoppingBag} />
+        <StatCard label="Active Orders" value={activeOrders.toString()} icon={Loader2} />
+        <StatCard label="Completed" value={completedOrders.toString()} icon={CheckCircle2} tone="primary" />
+        <StatCard label="Failed" value={failedOrders.toString()} icon={XCircle} tone="danger" />
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-3">
@@ -54,11 +88,11 @@ export default function DashboardHome() {
               <CardTitle className="text-base font-semibold">Monthly spending</CardTitle>
               <p className="text-xs text-muted-foreground">Last 12 months</p>
             </div>
-            <div className="text-sm text-muted-foreground">Total <span className="text-emerald-400 font-bold">₦12,350,000</span></div>
+            <div className="text-sm text-muted-foreground">Total <span className="text-emerald-400 font-bold">₦{parseFloat(stats?.total_spent || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}</span></div>
           </CardHeader>
           <CardContent className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={monthlySpending}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="monthlyGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#22c55e" stopOpacity={0.45} />

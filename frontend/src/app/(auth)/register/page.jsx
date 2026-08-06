@@ -35,12 +35,9 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const data = await registerUser(formData);
-      toast.success("Account created successfully!");
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-      }
-      router.push("/");
+      await registerUser(formData);
+      toast.success("Account created successfully! Please sign in.");
+      router.push("/login");
     } catch (err) {
       toast.error(err.message || "Registration failed. Please try again.");
     } finally {

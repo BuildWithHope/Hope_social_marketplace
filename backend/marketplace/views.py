@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.contrib.auth import get_user_model
 from django.db.models import Sum
 from .models import Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply, Provider
 from .serializers import (
@@ -26,20 +27,26 @@ class DashboardStatsView(APIView):
 
             total_spent = user_orders.filter(status='Completed').aggregate(Sum('total_amount'))['total_amount__sum'] or Decimal("0.00")
 
-            monthly_spending = [
-                {"month": "Jan", "amount": 42000},
-                {"month": "Feb", "amount": 68000},
-                {"month": "Mar", "amount": 95000},
-                {"month": "Apr", "amount": 120000},
-                {"month": "May", "amount": 89000},
-                {"month": "Jun", "amount": 145000},
-                {"month": "Jul", "amount": 182000},
-                {"month": "Aug", "amount": 134000},
-                {"month": "Sep", "amount": 160000},
-                {"month": "Oct", "amount": 195000},
-                {"month": "Nov", "amount": 210000},
-                {"month": "Dec", "amount": float(total_spent)},
-            ]
+            if total_orders == 0:
+                monthly_spending = [
+                    {"month": m, "amount": 0}
+                    for m in ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                ]
+            else:
+                monthly_spending = [
+                    {"month": "Jan", "amount": 0},
+                    {"month": "Feb", "amount": 0},
+                    {"month": "Mar", "amount": 0},
+                    {"month": "Apr", "amount": 0},
+                    {"month": "May", "amount": 0},
+                    {"month": "Jun", "amount": 0},
+                    {"month": "Jul", "amount": 0},
+                    {"month": "Aug", "amount": 0},
+                    {"month": "Sep", "amount": 0},
+                    {"month": "Oct", "amount": 0},
+                    {"month": "Nov", "amount": 0},
+                    {"month": "Dec", "amount": float(total_spent)},
+                ]
 
             return Response({
                 "wallet_balance": user.wallet_balance,
@@ -188,28 +195,26 @@ class WalletDepositView(APIView):
             except (InvalidOperation, TypeError, ValueError):
                 return Response({"error": "Invalid deposit amount"}, status=status.HTTP_400_BAD_REQUEST)
 
-            method = str(request.data.get('method', 'Flutterwave'))
+            method = str(request.data.get('method', 'Bank Transfer'))
 
             if amount <= 0:
                 return Response({"error": "Amount must be greater than ₦0"}, status=status.HTTP_400_BAD_REQUEST)
 
-            request.user.wallet_balance += amount
-            request.user.save()
-
+            # Create transaction with status 'Pending' for admin approval
             tx = Transaction.objects.create(
                 user=request.user,
                 transaction_type='Deposit',
                 amount=amount,
-                status='Completed',
+                status='Pending',
                 method=method,
                 reference=f"DEP-{uuid.uuid4().hex[:8].upper()}"
             )
 
             return Response({
-                "message": f"Successfully deposited ₦{amount:,.2f}",
-                "new_balance": request.user.wallet_balance,
+                "message": f"Deposit request of ₦{amount:,.2f} via {method} submitted successfully! Awaiting admin approval.",
+                "status": "Pending",
                 "transaction": TransactionSerializer(tx).data
-            })
+            }, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -297,5 +302,167 @@ class TicketReplyCreateView(APIView):
                 ticket.save()
 
             return Response(TicketReplySerializer(reply).data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminOverviewView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        try:
+            User = get_user_model()
+            total_users = User.objects.count()
+            active_users = User.objects.filter(is_active=True).count()
+            blocked_users = User.objects.filter(is_active=False).count()
+
+            pending_deposits = Transaction.objects.filter(transaction_type='Deposit', status='Pending')
+            pending_deposits_count = pending_deposits.count()
+            pending_deposits_sum = pending_deposits.aggregate(Sum('amount'))['amount__sum'] or Decimal("0.00")
+
+            total_orders = Order.objects.count()
+            total_revenue = Order.objects.filter(status='Completed').aggregate(Sum('total_amount'))['total_amount__sum'] or Decimal("0.00")
+
+            alerts = []
+            if pending_deposits_count > 0:
+                alerts.append({
+                    "id": 1,
+                    "level": "warning",
+                    "title": f"{pending_deposits_count} Pending Deposit(s) Awaiting Approval",
+                    "message": f"Totaling ₦{pending_deposits_sum:,.2f}. Review under Payment Confirmations.",
+                    "time": "Action Required"
+                })
+
+            if blocked_users > 0:
+                alerts.append({
+                    "id": 2,
+                    "level": "info",
+                    "title": f"{blocked_users} Blocked Account(s)",
+                    "message": "User access currently restricted under User Access Control.",
+                    "time": "System Log"
+                })
+
+            alerts.append({
+                "id": 3,
+                "level": "success",
+                "title": "SMM Provider API Status Normal",
+                "message": "Direct supplier order auto-fulfillment engine is operating clean.",
+                "time": "System Status"
+            })
+
+            return Response({
+                "total_users": total_users,
+                "active_users": active_users,
+                "blocked_users": blocked_users,
+                "pending_deposits_count": pending_deposits_count,
+                "pending_deposits_sum": pending_deposits_sum,
+                "total_orders": total_orders,
+                "total_revenue": total_revenue,
+                "alerts": alerts,
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminUserListView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        try:
+            User = get_user_model()
+            users = User.objects.all().order_by('-date_joined')
+            data = []
+            for u in users:
+                data.append({
+                    "id": u.id,
+                    "username": u.username,
+                    "email": u.email,
+                    "first_name": u.first_name,
+                    "last_name": u.last_name,
+                    "is_active": u.is_active,
+                    "is_staff": u.is_staff,
+                    "wallet_balance": u.wallet_balance,
+                    "date_joined": u.date_joined,
+                })
+            return Response(data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminUserBlockToggleView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, user_id):
+        try:
+            User = get_user_model()
+            try:
+                target_user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            target_user.is_active = not target_user.is_active
+            target_user.save()
+
+            status_str = "unblocked" if target_user.is_active else "blocked"
+            return Response({
+                "message": f"User @{target_user.username} has been {status_str}.",
+                "user": {
+                    "id": target_user.id,
+                    "username": target_user.username,
+                    "is_active": target_user.is_active
+                }
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminPendingDepositsView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        try:
+            deposits = Transaction.objects.filter(transaction_type='Deposit').order_by('-date')
+            data = []
+            for d in deposits:
+                data.append({
+                    "id": d.id,
+                    "reference": d.reference,
+                    "user_id": d.user.id,
+                    "user_name": d.user.username,
+                    "user_email": d.user.email,
+                    "amount": d.amount,
+                    "method": d.method,
+                    "status": d.status,
+                    "date": d.date,
+                })
+            return Response(data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminConfirmDepositView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, deposit_id):
+        try:
+            action = request.data.get('action', 'approve')
+            try:
+                tx = Transaction.objects.get(id=deposit_id)
+            except Transaction.DoesNotExist:
+                return Response({"error": "Deposit transaction not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            if action == 'approve':
+                if tx.status != 'Completed':
+                    tx.status = 'Completed'
+                    tx.save()
+                    tx.user.wallet_balance += tx.amount
+                    tx.user.save()
+                msg = f"Deposit #{tx.reference} approved. ₦{tx.amount:,.2f} credited to @{tx.user.username}'s wallet."
+            else:
+                tx.status = 'Failed'
+                tx.save()
+                msg = f"Deposit #{tx.reference} declined."
+
+            return Response({
+                "message": msg,
+                "transaction_id": tx.id,
+                "status": tx.status,
+                "user_new_balance": tx.user.wallet_balance
+            })
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

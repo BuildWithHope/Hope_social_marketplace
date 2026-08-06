@@ -2,7 +2,9 @@ from django.urls import path
 from .views import (
     ServiceListView, AccountItemListView, OrderListCreateView,
     TransactionListView, WalletDepositView, DashboardStatsView,
-    ReferralListView, SupportTicketListCreateView, TicketReplyCreateView
+    ReferralListView, SupportTicketListCreateView, TicketReplyCreateView,
+    AdminOverviewView, AdminUserListView, AdminUserBlockToggleView,
+    AdminPendingDepositsView, AdminConfirmDepositView
 )
 
 urlpatterns = [
@@ -15,4 +17,11 @@ urlpatterns = [
     path('referrals/', ReferralListView.as_view(), name='referral-list'),
     path('support/tickets/', SupportTicketListCreateView.as_view(), name='ticket-list-create'),
     path('support/tickets/<int:ticket_id>/reply/', TicketReplyCreateView.as_view(), name='ticket-reply-create'),
+
+    # Admin routes
+    path('admin/overview/', AdminOverviewView.as_view(), name='admin-overview'),
+    path('admin/users/', AdminUserListView.as_view(), name='admin-users'),
+    path('admin/users/<int:user_id>/toggle-block/', AdminUserBlockToggleView.as_view(), name='admin-user-toggle-block'),
+    path('admin/deposits/', AdminPendingDepositsView.as_view(), name='admin-deposits'),
+    path('admin/deposits/<int:deposit_id>/confirm/', AdminConfirmDepositView.as_view(), name='admin-confirm-deposit'),
 ]

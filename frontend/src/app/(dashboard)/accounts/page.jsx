@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/tabs";
 import { accounts, platforms, platformIcons } from "@/data/mock";
 import { toast } from "sonner";
+import { depositWallet } from "@/lib/api";
 
 // Country Flag Emoji Mapping
 const countryFlags = {
@@ -191,15 +192,26 @@ export default function AccountsPage() {
     });
   };
 
-  const handleCompletePayment = (methodName) => {
-    toast.success(`Payment Confirmed via ${methodName}!`, {
-      description: `Reference #${checkoutItem?.reference} · Account credentials will be delivered to your email instantly.`,
-    });
-    if (checkoutItem?.isCart) {
-      setCart([]);
+  const handleCompletePayment = async (methodName) => {
+    try {
+      if (checkoutItem) {
+        await depositWallet({
+          amount: checkoutItem.totalAmount,
+          method: methodName,
+        });
+      }
+      toast.success(`Payment request submitted via ${methodName}!`, {
+        description: `Reference #${checkoutItem?.reference} · Pending admin payment approval. View status under Transactions.`,
+      });
+      if (checkoutItem?.isCart) {
+        setCart([]);
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to submit payment request.");
+    } finally {
+      setIsPaymentModalOpen(false);
+      setCheckoutItem(null);
     }
-    setIsPaymentModalOpen(false);
-    setCheckoutItem(null);
   };
 
   const copyToClipboard = (text, type) => {

@@ -1,20 +1,23 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, TrendingUp, Users, Wallet, Receipt, Gift,
-  BookOpen, User, MessageSquare, LogOut, Sparkles, ChevronLeft,
+  BookOpen, User, MessageSquare, LogOut, Sparkles, ChevronLeft, ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { getUserProfile } from "@/lib/api";
 
-const nav = [
+const baseNav = [
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/marketplace", label: "Social Marketplace", icon: TrendingUp },
   { to: "/accounts", label: "Accounts Marketplace", icon: Users },
   { to: "/wallet", label: "Wallet", icon: Wallet },
   { to: "/transactions", label: "Transactions", icon: Receipt },
+  { to: "/admin", label: "Admin Control", icon: ShieldAlert, adminOnly: true },
   { to: "/referrals", label: "Referrals", icon: Gift },
   { to: "/api-docs", label: "API Documentation", icon: BookOpen },
   { to: "/profile", label: "Profile", icon: User },
@@ -23,6 +26,29 @@ const nav = [
 
 export function AppSidebar({ collapsed, onToggle, onNavigate }) {
   const pathname = usePathname();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        if (token) {
+          const profile = await getUserProfile();
+          setUser(profile);
+        }
+      } catch (err) {
+        setUser(null);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const navItems = baseNav.filter((item) => {
+    if (item.adminOnly) {
+      return Boolean(user && (user.is_staff || user.is_superuser));
+    }
+    return true;
+  });
 
   return (
     <aside
@@ -53,7 +79,7 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }) {
 
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1">
-          {nav.map(({ to, label, icon: Icon }) => {
+          {navItems.map(({ to, label, icon: Icon }) => {
             const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
             return (
               <li key={to}>
@@ -80,6 +106,11 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }) {
       <div className="border-t border-sidebar-border p-3">
         <Link
           href="/login"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("token");
+            }
+          }}
           className={cn(
             "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
           )}

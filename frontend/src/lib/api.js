@@ -140,3 +140,29 @@ export async function replySupportTicket(ticketId, replyData) {
     body: JSON.stringify(replyData),
   });
 }
+
+// Admin Control API
+export async function getAdminOverview() {
+  return fetchApi("/admin/overview/");
+}
+
+export async function getAdminUsers() {
+  return fetchApi("/admin/users/");
+}
+
+export async function toggleUserBlock(userId) {
+  return fetchApi(`/admin/users/${userId}/toggle-block/`, {
+    method: "POST",
+  });
+}
+
+export async function getAdminDeposits() {
+  return fetchApi("/admin/deposits/");
+}
+
+export async function confirmAdminDeposit(depositId, action = "approve") {
+  return fetchApi(`/admin/deposits/${depositId}/confirm/`, {
+    method: "POST",
+    body: JSON.stringify({ action }),
+  });
+}
