@@ -1,82 +1,131 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { googleLoginUser } from "@/lib/api";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 
 export function GoogleButton({ text = "Continue with Google", onSuccessRedirect = "/" }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [showChooser, setShowChooser] = useState(false);
-  const [customEmail, setCustomEmail] = useState("");
-  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState("");
+  const googleBtnContainerRef = useRef(null);
 
-  const sampleAccounts = [
-    {
-      name: "Hope Johnson",
-      email: "hope.johnson@gmail.com",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
-    },
-    {
-      name: "Sarah Williams",
-      email: "sarah.williams@gmail.com",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80",
-    },
-    {
-      name: "David Miller",
-      email: "david.miller@gmail.com",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
-    },
-  ];
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  const handleSelectAccount = async (account) => {
-    setShowChooser(false);
+  // Handle Real Google OAuth Response from Google GSI
+  const handleGoogleCredentialResponse = async (credentialResponse) => {
     setLoading(true);
     try {
       const data = await googleLoginUser({
-        email: account.email,
-        name: account.name,
-        given_name: account.name.split(" ")[0],
-        family_name: account.name.split(" ")[1] || "",
+        credential: credentialResponse.credential,
       });
       if (data.token) {
         localStorage.setItem("token", data.token);
       }
-      toast.success(`Signed in as ${account.email}`);
+      toast.success("Successfully signed in with Google!");
       if (data.user?.is_staff || data.user?.is_superuser) {
         window.location.href = "/admin";
       } else {
         window.location.href = "/";
       }
     } catch (err) {
-      toast.error(err.message || "Google sign-in failed.");
+      toast.error(err.message || "Google authentication failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCustomSubmit = async (e) => {
+  // Handle Manual Real Email Submission
+  const handleDirectEmailSubmit = async (e) => {
     e.preventDefault();
-    if (!customEmail || !customEmail.includes("@")) {
-      toast.error("Please enter a valid Gmail address.");
+    if (!googleEmail || !googleEmail.includes("@")) {
+      toast.error("Please enter a valid Google email address.");
       return;
     }
-    await handleSelectAccount({
-      name: customEmail.split("@")[0],
-      email: customEmail.toLowerCase(),
-    });
+    setLoading(true);
+    try {
+      const cleanEmail = googleEmail.trim().toLowerCase();
+      const data = await googleLoginUser({
+        email: cleanEmail,
+        name: cleanEmail.split("@")[0],
+      });
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+      toast.success(`Signed in as ${cleanEmail}`);
+      setShowEmailInput(false);
+      if (data.user?.is_staff || data.user?.is_superuser) {
+        window.location.href = "/admin";
+      } else {
+        window.location.href = "/";
+      }
+    } catch (err) {
+      toast.error(err.message || "Sign in failed. Please check backend API.");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    if (!clientId || typeof window === "undefined") return;
+
+    const initializeGsi = () => {
+      if (window.google?.accounts?.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+            auto_select: false,
+            use_fedcm_for_prompt: false,
+          });
+
+          if (googleBtnContainerRef.current) {
+            window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
+              theme: "outline",
+              size: "large",
+              width: "100%",
+              text: text === "Sign up with Google" ? "signup_with" : "continue_with",
+              shape: "rectangular",
+              logo_alignment: "left",
+            });
+          }
+        } catch (e) {
+          // Fallback handled via button
+        }
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      initializeGsi();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeGsi;
+      document.head.appendChild(script);
+    }
+  }, [clientId, text]);
 
   return (
     <div className="w-full space-y-2">
+      {/* Official Google GSI Rendered Button */}
+      {clientId && (
+        <div className="w-full flex justify-center overflow-hidden rounded-md min-h-[40px] border border-border">
+          <div ref={googleBtnContainerRef} className="w-full flex justify-center" />
+        </div>
+      )}
+
+      {/* Styled Secondary Google Sign In Button */}
       <Button
         type="button"
         variant="outline"
         className="w-full relative flex items-center justify-center gap-3 bg-background hover:bg-muted/60 border-input py-5 text-sm font-medium transition-all shadow-xs cursor-pointer"
-        onClick={() => setShowChooser(true)}
+        onClick={() => setShowEmailInput(true)}
         disabled={loading}
       >
         {loading ? (
@@ -104,15 +153,14 @@ export function GoogleButton({ text = "Continue with Google", onSuccessRedirect 
         <span>{text}</span>
       </Button>
 
-      {/* Account Chooser Modal */}
-      {showChooser && (
+      {/* Direct Google Account Email Modal */}
+      {showEmailInput && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div
-            className="w-full max-w-md bg-background border border-border rounded-2xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 relative overflow-hidden"
+            className="w-full max-w-md bg-background border border-border rounded-2xl p-6 shadow-2xl space-y-4 relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-1.5">
               <div className="flex justify-center mb-1">
                 <svg className="h-8 w-8" viewBox="0 0 24 24">
                   <path
@@ -133,84 +181,41 @@ export function GoogleButton({ text = "Continue with Google", onSuccessRedirect 
                   />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold tracking-tight">Choose an account</h2>
-              <p className="text-xs text-muted-foreground">to continue to HopeSocial Marketplace</p>
+              <h2 className="text-xl font-semibold tracking-tight">Sign in with Google</h2>
+              <p className="text-xs text-muted-foreground">Enter your Google email address to continue</p>
             </div>
 
-            {/* Account List */}
-            <div className="divide-y divide-border border border-border rounded-xl overflow-hidden bg-card">
-              {sampleAccounts.map((acc, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => handleSelectAccount(acc)}
-                  className="w-full flex items-center gap-3 p-3.5 hover:bg-muted/70 transition-colors text-left group cursor-pointer"
-                >
-                  <img
-                    src={acc.avatar}
-                    alt={acc.name}
-                    className="h-10 w-10 rounded-full object-cover border border-border flex-shrink-0"
+            <form onSubmit={handleDirectEmailSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Google Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="your.email@gmail.com"
+                    value={googleEmail}
+                    onChange={(e) => setGoogleEmail(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-muted/30 border border-input rounded-xl focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                    autoFocus
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
-                      {acc.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">{acc.email}</p>
-                  </div>
-                </button>
-              ))}
+                </div>
+              </div>
 
-              {/* Custom Email Input Toggle */}
-              {showCustomInput ? (
-                <form onSubmit={handleCustomSubmit} className="p-3.5 space-y-2 bg-muted/30">
-                  <p className="text-xs font-medium text-foreground">Enter your Gmail address:</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      required
-                      placeholder="your.name@gmail.com"
-                      value={customEmail}
-                      onChange={(e) => setCustomEmail(e.target.value)}
-                      className="flex-1 px-3 py-1.5 text-xs bg-background border border-input rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
-                      autoFocus
-                    />
-                    <Button type="submit" size="xs" className="px-3">
-                      Sign in
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <button
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button
                   type="button"
-                  onClick={() => setShowCustomInput(true)}
-                  className="w-full flex items-center gap-3 p-3.5 hover:bg-muted/70 transition-colors text-left cursor-pointer"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEmailInput(false)}
                 >
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center border border-dashed border-muted-foreground/40 text-muted-foreground flex-shrink-0">
-                    <Plus className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Use another account</p>
-                    <p className="text-xs text-muted-foreground">Sign in with a different Gmail address</p>
-                  </div>
-                </button>
-              )}
-            </div>
-
-            {/* Cancel Button */}
-            <div className="pt-1 flex justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowChooser(false);
-                  setShowCustomInput(false);
-                }}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Cancel
-              </Button>
-            </div>
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={loading} className="font-semibold bg-emerald-500 hover:bg-emerald-600 text-black">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue to Account"}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
