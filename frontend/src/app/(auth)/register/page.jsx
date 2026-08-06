@@ -36,8 +36,10 @@ export default function Register() {
     setLoading(true);
     try {
       await registerUser(formData);
-      toast.success("Account created successfully! Please sign in.");
-      router.push("/login");
+      toast.success("Account created successfully! Redirecting to login page...");
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 1000);
     } catch (err) {
       toast.error(err.message || "Registration failed. Please try again.");
     } finally {
