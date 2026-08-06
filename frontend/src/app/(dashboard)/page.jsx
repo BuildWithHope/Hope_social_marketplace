@@ -19,6 +19,7 @@ import {
 } from "recharts";
 import { recentOrders, monthlySpending as mockMonthlySpending, topServices, platformIcons } from "@/data/mock";
 import { getDashboardStats, getUserProfile } from "@/lib/api";
+import { LandingPage } from "@/components/landing/landing-page";
 
 const topServicesWithColors = [
   { name: "IG Followers", v: 42, color: "#E1306C" },
@@ -27,28 +28,39 @@ const topServicesWithColors = [
   { name: "Telegram Members", v: 13, color: "#0088CC" },
 ];
 
-export default function DashboardHome() {
+export default function RootPage() {
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState(null);
+  const [isAuth, setIsAuth] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         if (token) {
+          setIsAuth(true);
           const [uData, sData] = await Promise.all([
             getUserProfile().catch(() => null),
             getDashboardStats().catch(() => null),
           ]);
           setUser(uData);
           setStats(sData);
+        } else {
+          setIsAuth(false);
         }
       } catch (err) {
-        // Fallback
+        setIsAuth(false);
+      } finally {
+        setCheckingAuth(false);
       }
     };
     loadData();
   }, []);
+
+  if (!checkingAuth && !isAuth) {
+    return <LandingPage />;
+  }
 
   const balanceVal = stats?.wallet_balance ?? user?.wallet_balance ?? 0;
   const formattedBalance = `₦${parseFloat(balanceVal || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
