@@ -5,7 +5,12 @@ function getApiBaseUrl() {
       return `http://${host}:8000/api`;
     }
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+  let url = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").trim();
+  url = url.replace(/\/+$/, "");
+  if (!url.endsWith("/api")) {
+    url += "/api";
+  }
+  return url;
 }
 
 export async function fetchApi(endpoint, options = {}) {
