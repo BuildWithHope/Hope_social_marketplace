@@ -44,18 +44,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        username = validated_data['username']
-        email = validated_data.get('email', '')
         user = User.objects.create_user(
-            username=username,
-            email=email,
+            username=validated_data['username'],
+            email=validated_data.get('email', ''),
             password=validated_data['password'],
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
         )
-        # Automatically grant full admin privileges if registering with an admin username or email
-        if 'admin' in username.lower() or 'admin' in email.lower():
-            user.is_staff = True
-            user.is_superuser = True
-            user.save()
         return user
