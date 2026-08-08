@@ -119,6 +119,10 @@ export async function getTransactions() {
   return fetchApi("/transactions/");
 }
 
+export async function getNotifications() {
+  return fetchApi("/notifications/");
+}
+
 export async function depositWallet(depositData) {
   return fetchApi("/wallet/deposit/", {
     method: "POST",
@@ -173,5 +177,41 @@ export async function confirmAdminDeposit(depositId, action = "approve") {
   return fetchApi(`/admin/deposits/${depositId}/confirm/`, {
     method: "POST",
     body: JSON.stringify({ action }),
+  });
+}
+
+export async function getAdminSupportTickets() {
+  return fetchApi("/admin/support/tickets/");
+}
+
+export async function replyAdminSupportTicket(ticketId, message) {
+  return fetchApi(`/admin/support/tickets/${ticketId}/reply/`, {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+}
+
+export async function getAdminOrders() {
+  return fetchApi("/admin/orders/");
+}
+
+export async function changePassword(old_password, new_password) {
+  return fetchApi("/users/change-password/", {
+    method: "POST",
+    body: JSON.stringify({ old_password, new_password }),
+  });
+}
+
+export async function requestPasswordReset(email) {
+  return fetchApi("/users/request-password-reset/", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function confirmPasswordReset(email, code, new_password) {
+  return fetchApi("/users/reset-password-confirm/", {
+    method: "POST",
+    body: JSON.stringify({ email, code, new_password }),
   });
 }

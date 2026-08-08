@@ -5,22 +5,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, TrendingUp, Users, Wallet, Receipt, Gift,
-  BookOpen, User, MessageSquare, LogOut, Sparkles, ChevronLeft, ShieldAlert,
+  BookOpen, User, MessageSquare, LogOut, LogIn, Sparkles, ChevronLeft, ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { getUserProfile } from "@/lib/api";
 
 const baseNav = [
-  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/", label: "Dashboard", icon: Home, authRequired: true },
   { to: "/marketplace", label: "Social Marketplace", icon: TrendingUp },
   { to: "/accounts", label: "Accounts Marketplace", icon: Users },
-  { to: "/wallet", label: "Wallet", icon: Wallet },
-  { to: "/transactions", label: "Transactions", icon: Receipt },
+  { to: "/wallet", label: "Wallet", icon: Wallet, authRequired: true },
+  { to: "/transactions", label: "Transactions", icon: Receipt, authRequired: true },
   { to: "/admin", label: "Admin Control", icon: ShieldAlert, adminOnly: true },
-  { to: "/referrals", label: "Referrals", icon: Gift },
+  { to: "/referrals", label: "Referrals", icon: Gift, authRequired: true },
   { to: "/api-docs", label: "API Documentation", icon: BookOpen },
-  { to: "/profile", label: "Profile", icon: User },
+  { to: "/profile", label: "Profile", icon: User, authRequired: true },
   { to: "/support", label: "Support", icon: MessageSquare },
 ];
 
@@ -46,6 +46,9 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }) {
   const navItems = baseNav.filter((item) => {
     if (item.adminOnly) {
       return Boolean(user && (user.is_staff || user.is_superuser));
+    }
+    if (item.authRequired && !user) {
+      return false;
     }
     return true;
   });
@@ -104,20 +107,32 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }) {
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
-        <Link
-          href="/login"
-          onClick={() => {
-            if (typeof window !== "undefined") {
-              localStorage.removeItem("token");
-            }
-          }}
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
-          )}
-        >
-          <LogOut className="h-[18px] w-[18px] shrink-0" />
-          {!collapsed && <span>Sign out</span>}
-        </Link>
+        {user ? (
+          <Link
+            href="/login"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("token");
+              }
+            }}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
+            )}
+          >
+            <LogOut className="h-[18px] w-[18px] shrink-0" />
+            {!collapsed && <span>Sign out</span>}
+          </Link>
+        ) : (
+          <Link
+            href="/login"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
+            )}
+          >
+            <LogIn className="h-[18px] w-[18px] shrink-0" />
+            {!collapsed && <span>Sign in</span>}
+          </Link>
+        )}
       </div>
     </aside>
   );

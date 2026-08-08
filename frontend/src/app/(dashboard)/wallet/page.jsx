@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
-import { transactions as mockTransactions } from "@/data/mock";
 import { depositWallet, getUserProfile, getDashboardStats, getTransactions } from "@/lib/api";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
@@ -58,15 +57,8 @@ export default function WalletPage() {
   const totalDepositedVal = parseFloat(balanceVal) + totalSpentVal;
   const formattedDeposited = `₦${totalDepositedVal.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
 
-  const userDeposits = realTransactions.filter((t) => (t.transaction_type === "Deposit" || t.type === "Deposit"));
-  const deposits = userDeposits.length > 0
-    ? userDeposits.slice(0, 10)
-    : mockTransactions.filter((t) => t.type === "Deposit").slice(0, 6);
-
-  const userWithdrawals = realTransactions.filter((t) => (t.transaction_type === "Withdrawal" || t.type === "Withdrawal"));
-  const withdrawals = userWithdrawals.length > 0
-    ? userWithdrawals.slice(0, 6)
-    : mockTransactions.filter((t) => t.type === "Withdrawal").slice(0, 6);
+  const deposits = realTransactions.filter((t) => (t.transaction_type === "Deposit" || t.type === "Deposit")).slice(0, 10);
+  const withdrawals = realTransactions.filter((t) => (t.transaction_type === "Withdrawal" || t.type === "Withdrawal")).slice(0, 6);
 
   const [selectedMethod, setSelectedMethod] = useState("Bank Transfer");
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
@@ -241,15 +233,21 @@ export default function WalletPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {deposits.map((t) => (
-                <div key={t.id} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-3 text-sm">
-                  <div>
-                    <div className="font-mono text-xs text-muted-foreground">{t.reference || t.id} · {t.method}</div>
-                    <div className="font-semibold text-emerald-400">+₦{parseFloat(t.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
-                  </div>
-                  <StatusBadge status={t.status} />
+              {deposits.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  No deposits recorded yet. Click "Add funds" above to make your first deposit.
                 </div>
-              ))}
+              ) : (
+                deposits.map((t) => (
+                  <div key={t.id || t.reference} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-3 text-sm">
+                    <div>
+                      <div className="font-mono text-xs text-muted-foreground">{t.reference || t.id} · {t.method || t.payment_method}</div>
+                      <div className="font-semibold text-emerald-400">+₦{parseFloat(t.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <StatusBadge status={t.status || "Completed"} />
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -260,15 +258,21 @@ export default function WalletPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {withdrawals.map((t) => (
-                <div key={t.id} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-3 text-sm">
-                  <div>
-                    <div className="font-mono text-xs text-muted-foreground">{t.id} · {t.method}</div>
-                    <div className="font-semibold text-rose-400">-₦{t.amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
-                  </div>
-                  <StatusBadge status={t.status} />
+              {withdrawals.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  No withdrawals recorded yet.
                 </div>
-              ))}
+              ) : (
+                withdrawals.map((t) => (
+                  <div key={t.id || t.reference} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-3 text-sm">
+                    <div>
+                      <div className="font-mono text-xs text-muted-foreground">{t.reference || t.id} · {t.method || t.payment_method}</div>
+                      <div className="font-semibold text-rose-400">-₦{parseFloat(t.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <StatusBadge status={t.status || "Completed"} />
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

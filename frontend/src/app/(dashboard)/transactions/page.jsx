@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, Download } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, Download, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
-import { transactions } from "@/data/mock";
+import { getTransactions } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function TransactionsPage() {
@@ -25,24 +25,80 @@ export default function TransactionsPage() {
   const [status, setStatus] = useState("all");
   const [range, setRange] = useState("30d");
   const [page, setPage] = useState(1);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const perPage = 10;
 
+  useEffect(() => {
+    async function loadTx() {
+      try {
+        const data = await getTransactions();
+        setTransactions(data || []);
+      } catch (err) {
+        setTransactions([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadTx();
+  }, []);
+
   const list = useMemo(
-    () => transactions.filter((t) =>
-      (status === "all" || t.status === status) &&
-      (q === "" || `${t.id} ${t.reference} ${t.method}`.toLowerCase().includes(q.toLowerCase())),
-    ),
-    [q, status],
+    () => (transactions || []).filter((t) => {
+      const txStatus = t.status || t.transaction_type || "";
+      const txId = t.id || t.reference || "";
+      const txMethod = t.method || t.payment_method || "";
+      const txRef = t.reference || "";
+      return (
+        (status === "all" || txStatus.toLowerCase() === status.toLowerCase()) &&
+        (q === "" || `${txId} ${txRef} ${txMethod}`.toLowerCase().includes(q.toLowerCase()))
+      );
+    }),
+    [transactions, q, status],
   );
   const pages = Math.max(1, Math.ceil(list.length / perPage));
   const paged = list.slice((page - 1) * perPage, page * perPage);
+
+  const handleExportCSV = () => {
+    if (!list || list.length === 0) {
+      toast.error("No transactions available to export.");
+      return;
+    }
+
+    const headers = ["Tx ID", "Type", "Amount (NGN)", "Status", "Method", "Reference", "Date"];
+    const csvRows = [headers.join(",")];
+
+    list.forEach((t) => {
+      const row = [
+        `"${t.id || t.reference || ''}"`,
+        `"${t.type || t.transaction_type || 'Deposit'}"`,
+        `"${parseFloat(t.amount || 0).toFixed(2)}"`,
+        `"${t.status || 'Completed'}"`,
+        `"${t.method || t.payment_method || 'Bank Transfer'}"`,
+        `"${t.reference || t.id || ''}"`,
+        `"${t.date || t.created_at ? new Date(t.date || t.created_at).toLocaleString() : ''}"`,
+      ];
+      csvRows.push(row.join(","));
+    });
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `hopesocial_transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success(`Exported ${list.length} transaction(s) to CSV!`);
+  };
 
   return (
     <div>
       <PageHeader
         title="Transactions"
         description="A live log of every credit and debit on your account in Naira (₦)."
-        actions={<Button variant="outline" className="border-border/60" onClick={() => toast.success("CSV exported")}><Download className="h-4 w-4" /> Export CSV</Button>}
+        actions={<Button variant="outline" className="border-border/60 gap-2" onClick={handleExportCSV}><Download className="h-4 w-4" /> Export CSV</Button>}
       />
 
       <Card className="mb-5 border-border/60 bg-card">
@@ -88,17 +144,34 @@ export default function TransactionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.map((t) => (
-                  <TableRow key={t.id} className="border-border/40">
-                    <TableCell className="font-mono text-xs">{t.id}</TableCell>
-                    <TableCell>{t.type}</TableCell>
-                    <TableCell className="text-right tabular-nums font-semibold">₦{t.amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</TableCell>
-                    <TableCell><StatusBadge status={t.status} /></TableCell>
-                    <TableCell className="text-muted-foreground">{t.method}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{t.reference}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{new Date(t.date).toLocaleString()}</TableCell>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                      <div className="flex justify-center items-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        <span>Loading transactions…</span>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                ))}
+                ) : paged.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground text-sm font-medium">
+                      No transactions recorded yet. Fund your wallet or place an order to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paged.map((t) => (
+                    <TableRow key={t.id || t.reference} className="border-border/40">
+                      <TableCell className="font-mono text-xs">{t.id || t.reference}</TableCell>
+                      <TableCell>{t.type || t.transaction_type || "Deposit"}</TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">₦{parseFloat(t.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell><StatusBadge status={t.status || "Completed"} /></TableCell>
+                      <TableCell className="text-muted-foreground">{t.method || t.payment_method || "Bank Transfer"}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{t.reference || t.id || "N/A"}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{t.date || t.created_at ? new Date(t.date || t.created_at).toLocaleString() : "Recently"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

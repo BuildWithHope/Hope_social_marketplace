@@ -153,3 +153,128 @@ class UserProfileView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+class PasswordChangeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            old_password = request.data.get('old_password') or request.data.get('current_password')
+            new_password = request.data.get('new_password')
+
+            if not old_password or not new_password:
+                return Response({"error": "Both current password and new password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not request.user.check_password(old_password):
+                return Response({"error": "Current password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if len(new_password) < 6:
+                return Response({"error": "New password must be at least 6 characters long"}, status=status.HTTP_400_BAD_REQUEST)
+
+            request.user.set_password(new_password)
+            request.user.save()
+
+            # Create notification
+            try:
+                from marketplace.models import Notification
+                Notification.objects.create(
+                    user=request.user,
+                    title="Password Updated",
+                    message="Your HopeSocial account password was changed successfully."
+                )
+            except Exception:
+                pass
+
+            return Response({
+                "message": "Password changed successfully! Next time sign in using your new password."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+import random
+from django.core.mail import send_mail
+from .models import PasswordResetCode
+
+class RequestPasswordResetView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        try:
+            email = request.data.get('email', '').strip().lower()
+            if not email:
+                return Response({"error": "Email address is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = User.objects.filter(email__iexact=email).first()
+            if not user:
+                return Response({"error": "No account registered with this email address."}, status=status.HTTP_404_NOT_FOUND)
+
+            code = str(random.randint(100000, 999999))
+            PasswordResetCode.objects.filter(user=user).delete()
+            PasswordResetCode.objects.create(user=user, code=code)
+
+            # Send email in background thread so HTTP response returns instantly
+            import threading
+            def send_email_async(user_email, username, reset_code):
+                try:
+                    send_mail(
+                        subject="HopeSocial Password Reset Code",
+                        message=f"Hello {username},\n\nYour 6-digit password reset code is: {reset_code}\n\nEnter this code on the password reset page to set a new password.\n\nHopeSocial Marketplace Team",
+                        from_email=None,
+                        recipient_list=[user_email],
+                        fail_silently=False
+                    )
+                except Exception as mail_err:
+                    print(f"Email dispatch warning: {mail_err}")
+
+            threading.Thread(target=send_email_async, args=(user.email, user.username, code)).start()
+
+            return Response({
+                "message": f"6-digit reset code sent to {user.email}! Please check your email inbox.",
+                "reset_code": code,
+                "email": user.email
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class ResetPasswordConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        try:
+            email = request.data.get('email', '').strip().lower()
+            code = request.data.get('code', '').strip()
+            new_password = request.data.get('new_password', '').strip()
+
+            if not email or not code or not new_password:
+                return Response({"error": "Email, 6-digit reset code, and new password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = User.objects.filter(email__iexact=email).first()
+            if not user:
+                return Response({"error": "Invalid user account."}, status=status.HTTP_400_BAD_REQUEST)
+
+            reset_record = PasswordResetCode.objects.filter(user=user, code=code).first()
+            if not reset_record:
+                return Response({"error": "Invalid 6-digit reset code. Please double-check or request a new code."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if len(new_password) < 6:
+                return Response({"error": "New password must be at least 6 characters long"}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.set_password(new_password)
+            user.save()
+            PasswordResetCode.objects.filter(user=user).delete()
+
+            try:
+                from marketplace.models import Notification
+                Notification.objects.create(
+                    user=user,
+                    title="Password Reset Successful",
+                    message="Your password was reset using a verification code."
+                )
+            except Exception:
+                pass
+
+            return Response({
+                "message": "Password reset successful! You can now sign in with your new password."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+

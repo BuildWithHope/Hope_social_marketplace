@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { registerUser } from "@/lib/api";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 
 export default function Register() {
@@ -21,6 +21,7 @@ export default function Register() {
     last_name: "",
   });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -30,6 +31,12 @@ export default function Register() {
     e.preventDefault();
     if (!formData.username || !formData.password || !formData.email) {
       toast.error("Please fill in username, email, and password.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      toast.error("Please enter a valid email address (e.g. name@example.com).");
       return;
     }
 
@@ -121,16 +128,31 @@ export default function Register() {
 
         <div className="space-y-1.5">
           <Label htmlFor="password">Password *</Label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            required
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={handleChange}
-            className="bg-muted/40"
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              required
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              className="bg-muted/40 pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
+              tabIndex={-1}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         <Button className="w-full" type="submit" disabled={loading}>

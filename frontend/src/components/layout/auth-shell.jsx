@@ -27,7 +27,7 @@ export function AuthShell({ children }) {
           <div />
           <div className="max-w-md">
             <h2 className="text-3xl font-semibold tracking-tight">The premium marketplace for social growth.</h2>
-            <p className="mt-3 text-muted-foreground">Deploy campaigns, buy verified accounts and integrate our API — all from one lightning-fast dashboard.</p>
+            <p className="mt-3 text-muted-foreground">Deploy campaigns, buy verified accounts and integrate our API all from one lightning-fast dashboard.</p>
             <div className="mt-8 grid grid-cols-3 gap-3">
               {[{i: ShieldCheck, t: "Secure"},{i: Zap, t: "Instant"},{i: Globe2, t: "Global"}].map(({i:Icon,t}) => (
                 <div key={t} className="rounded-xl border border-border/60 bg-card/60 p-3 text-center backdrop-blur">

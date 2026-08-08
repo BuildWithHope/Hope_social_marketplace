@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply
+from .models import Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply, Notification
 
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,9 +12,12 @@ class AccountItemSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class OrderSerializer(serializers.ModelSerializer):
+    user_username = serializers.ReadOnlyField(source='user.username')
+    user_email = serializers.ReadOnlyField(source='user.email')
+
     class Meta:
         model = Order
-        fields = ['id', 'user', 'service', 'service_name', 'target_link', 'quantity', 'total_amount', 'status', 'date']
+        fields = ['id', 'user', 'user_username', 'user_email', 'service', 'service_name', 'target_link', 'quantity', 'total_amount', 'status', 'date']
         read_only_fields = ['user', 'date']
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -46,4 +49,10 @@ class SupportTicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupportTicket
         fields = ['id', 'user', 'subject', 'category', 'priority', 'status', 'created_at', 'replies']
+        read_only_fields = ['user', 'created_at']
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'user', 'title', 'message', 'is_read', 'created_at']
         read_only_fields = ['user', 'created_at']

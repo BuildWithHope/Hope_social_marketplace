@@ -142,9 +142,19 @@
     border-color: var(--color-border);
   }
 
+  *:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  *:focus:not(:focus-visible) {
+    outline: none !important;
+  }
+
   html, body {
     max-width: 100vw;
     overflow-x: hidden;
+    caret-color: transparent !important;
   }
 
   body {
@@ -155,6 +165,17 @@
   }
 
   html { color-scheme: dark; }
+
+  /* Prevent text caret insertion lines across non-input elements */
+  *, h1, h2, h3, h4, h5, h6, p, span, div, td, th, label, button, a, svg, .card, table, [role="tablist"], [role="tab"] {
+    caret-color: transparent !important;
+  }
+
+  input, textarea, [contenteditable="true"] {
+    caret-color: var(--color-primary, #22c55e) !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
 }
 
 @utility glass-panel {

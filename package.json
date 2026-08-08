@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"yellow,cyan\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"yellow,cyan\" \"npm.cmd run dev:backend\" \"npm.cmd run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm.cmd run dev",
     "dev:backend": "cd backend && .venv\\Scripts\\python.exe manage.py runserver 8000",
-    "build": "cd frontend && npm run build"
+    "build": "cd frontend && npm.cmd run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

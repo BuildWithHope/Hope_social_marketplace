@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/tabs";
 import { accounts, platforms, platformIcons } from "@/data/mock";
 import { toast } from "sonner";
-import { depositWallet } from "@/lib/api";
+import { placeOrder } from "@/lib/api";
 
 // Country Flag Emoji Mapping
 const countryFlags = {
@@ -169,6 +169,7 @@ export default function AccountsPage() {
   const handleDirectPayClick = (account, qty) => {
     initiatePaymentModal({
       title: `${qty}x ${account.platform} Aged Account (${account.id})`,
+      accountId: account.id || account.name,
       platform: account.platform,
       country: account.country,
       unitPrice: account.price,
@@ -195,19 +196,21 @@ export default function AccountsPage() {
   const handleCompletePayment = async (methodName) => {
     try {
       if (checkoutItem) {
-        await depositWallet({
-          amount: checkoutItem.totalAmount,
-          method: methodName,
+        await placeOrder({
+          account: checkoutItem.accountId,
+          quantity: checkoutItem.quantity,
+          target_link: `Account Purchase: ${checkoutItem.title}`,
+          payment_method: methodName,
         });
       }
-      toast.success(`Payment request submitted via ${methodName}!`, {
-        description: `Reference #${checkoutItem?.reference} · Pending admin payment approval. View status under Transactions.`,
+      toast.success(`Order for '${checkoutItem?.title}' placed via ${methodName}!`, {
+        description: `Reference #${checkoutItem?.reference} · Track your order under Dashboard & Transactions.`,
       });
       if (checkoutItem?.isCart) {
         setCart([]);
       }
     } catch (err) {
-      toast.error(err.message || "Failed to submit payment request.");
+      toast.error(err.message || "Failed to place order.");
     } finally {
       setIsPaymentModalOpen(false);
       setCheckoutItem(null);

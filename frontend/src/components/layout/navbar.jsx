@@ -5,7 +5,7 @@ import { Bell, Menu, Search, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUserProfile } from "@/lib/api";
+import { getUserProfile, getNotifications } from "@/lib/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,18 +16,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { notifications } from "@/data/mock";
 
 export function Navbar({ onOpenMobile }) {
   const [user, setUser] = useState(null);
+  const [userNotifications, setUserNotifications] = useState([]);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
         if (token) {
-          const profile = await getUserProfile();
+          const [profile, notes] = await Promise.all([
+            getUserProfile().catch(() => null),
+            getNotifications().catch(() => []),
+          ]);
           setUser(profile);
+          setUserNotifications(notes || []);
         }
       } catch (err) {
         setUser(null);
@@ -57,84 +61,94 @@ export function Navbar({ onOpenMobile }) {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <Link
-          href="/wallet"
-          className="hidden sm:inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-sm hover:bg-muted/50 font-semibold"
-        >
-          <Wallet className="h-4 w-4 text-primary" />
-          <span className="font-medium text-foreground">{formattedBalance}</span>
-        </Link>
+        {user ? (
+          <>
+            <Link
+              href="/wallet"
+              className="hidden sm:inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-sm hover:bg-muted/50 font-semibold"
+            >
+              <Wallet className="h-4 w-4 text-primary" />
+              <span className="font-medium text-foreground">{formattedBalance}</span>
+            </Link>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex items-center justify-between">
-              Notifications
-              <Badge variant="secondary">{notifications.length}</Badge>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.map((n) => (
-              <DropdownMenuItem key={n.title} className="flex flex-col items-start gap-0.5 py-2">
-                <span className="text-sm">{n.title}</span>
-                <span className="text-xs text-muted-foreground">{n.time}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {userNotifications.length > 0 && (
+                    <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-400" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  Notifications
+                  <Badge variant="secondary">{userNotifications.length}</Badge>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {userNotifications.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-muted-foreground">
+                    No new notifications right now.
+                  </div>
+                ) : (
+                  userNotifications.map((n) => (
+                    <DropdownMenuItem key={n.id || n.title} className="flex flex-col items-start gap-1 py-2.5">
+                      <span className="text-xs font-bold text-foreground">{n.title}</span>
+                      <span className="text-[11px] text-muted-foreground leading-relaxed">{n.message}</span>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>{user ? `@${user.username}` : "My account"}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/profile">Profile</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/wallet">Wallet</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/support">Support</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {user ? (
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/login"
-                  onClick={() => {
-                    if (typeof window !== "undefined") {
-                      localStorage.removeItem("token");
-                    }
-                  }}
-                >
-                  Log out
-                </Link>
-              </DropdownMenuItem>
-            ) : (
-              <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>{`@${user.username}`}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/login">Sign In</Link>
+                  <Link href="/profile">Profile</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/register">Create Account</Link>
+                  <Link href="/wallet">Wallet</Link>
                 </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <DropdownMenuItem asChild>
+                  <Link href="/support">Support</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/login"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        localStorage.removeItem("token");
+                      }
+                    }}
+                  >
+                    Log out
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" asChild size="sm" className="font-semibold">
+              <Link href="/login">Sign In</Link>
+            </Button>
+            <Button asChild size="sm" className="font-bold bg-emerald-500 hover:bg-emerald-600 text-black">
+              <Link href="/register">Get Started</Link>
+            </Button>
+          </div>
+        )}
       </div>
     </header>
   );

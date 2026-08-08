@@ -72,42 +72,6 @@ const testimonials = [
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary selection:text-black">
-      {/* 1. PUBLIC HEADER NAVBAR */}
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md px-4 md:px-8">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4">
-          {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/30 group-hover:scale-105 transition-transform">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-base font-bold tracking-tight">HopeSocial</div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
-                Marketplace
-              </div>
-            </div>
-          </Link>
-
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <a href="#services" className="hover:text-primary transition-colors">SMM Services</a>
-            <a href="#accounts" className="hover:text-primary transition-colors">Aged Accounts</a>
-            <a href="#api" className="hover:text-primary transition-colors">Supplier API</a>
-            <a href="#testimonials" className="hover:text-primary transition-colors">Testimonials</a>
-          </nav>
-
-          {/* Action CTAs */}
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild size="sm" className="font-semibold">
-              <Link href="/login">Sign In</Link>
-            </Button>
-            <Button asChild size="sm" className="font-bold shadow-md shadow-emerald-500/20 bg-emerald-500 hover:bg-emerald-600 text-black">
-              <Link href="/register">Get Started Free</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
-
       {/* 2. HERO SECTION */}
       <section className="relative overflow-hidden pt-16 pb-20 md:pt-24 md:pb-28">
         {/* Glow Effects */}

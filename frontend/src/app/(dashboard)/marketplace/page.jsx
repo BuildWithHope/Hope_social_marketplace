@@ -25,6 +25,7 @@ import {
   PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
 import { services as mockServices, platforms, platformIcons } from "@/data/mock";
+import { placeOrder } from "@/lib/api";
 import { toast } from "sonner";
 
 // Platform Color System & Branding Styles
@@ -134,6 +135,7 @@ export default function Marketplace() {
 
     setCheckoutItem({
       title: selectedService.name,
+      serviceId: selectedService.id || selectedService.name,
       platform: selectedService.platform,
       quantity: orderQuantity,
       targetLink: targetLink,
@@ -146,12 +148,25 @@ export default function Marketplace() {
     setIsPaymentModalOpen(true);
   };
 
-  const handleCompletePayment = (methodName) => {
-    toast.success(`Order Placed via ${methodName}!`, {
-      description: `Ref #${checkoutItem?.reference} · ${checkoutItem?.quantity.toLocaleString()} ${checkoutItem?.platform} items will start processing shortly.`,
-    });
-    setIsPaymentModalOpen(false);
-    setCheckoutItem(null);
+  const handleCompletePayment = async (methodName) => {
+    try {
+      if (checkoutItem) {
+        await placeOrder({
+          service: checkoutItem.serviceId,
+          quantity: checkoutItem.quantity,
+          target_link: checkoutItem.targetLink,
+          payment_method: methodName,
+        });
+      }
+      toast.success(`Order for '${checkoutItem?.title}' placed via ${methodName}!`, {
+        description: `Reference #${checkoutItem?.reference} · View order progress under Dashboard & Transactions.`,
+      });
+    } catch (err) {
+      toast.error(err.message || "Failed to place order.");
+    } finally {
+      setIsPaymentModalOpen(false);
+      setCheckoutItem(null);
+    }
   };
 
   const copyToClipboard = (text, type) => {

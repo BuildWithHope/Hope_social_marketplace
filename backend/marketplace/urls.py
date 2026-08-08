@@ -4,7 +4,8 @@ from .views import (
     TransactionListView, WalletDepositView, DashboardStatsView,
     ReferralListView, SupportTicketListCreateView, TicketReplyCreateView,
     AdminOverviewView, AdminUserListView, AdminUserBlockToggleView,
-    AdminPendingDepositsView, AdminConfirmDepositView
+    AdminPendingDepositsView, AdminConfirmDepositView, NotificationListView,
+    AdminSupportTicketListView, AdminTicketReplyView, AdminOrdersListView
 )
 
 urlpatterns = [
@@ -14,6 +15,7 @@ urlpatterns = [
     path('orders/', OrderListCreateView.as_view(), name='order-list-create'),
     path('transactions/', TransactionListView.as_view(), name='transaction-list'),
     path('wallet/deposit/', WalletDepositView.as_view(), name='wallet-deposit'),
+    path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('referrals/', ReferralListView.as_view(), name='referral-list'),
     path('support/tickets/', SupportTicketListCreateView.as_view(), name='ticket-list-create'),
     path('support/tickets/<int:ticket_id>/reply/', TicketReplyCreateView.as_view(), name='ticket-reply-create'),
@@ -24,4 +26,7 @@ urlpatterns = [
     path('admin/users/<int:user_id>/toggle-block/', AdminUserBlockToggleView.as_view(), name='admin-user-toggle-block'),
     path('admin/deposits/', AdminPendingDepositsView.as_view(), name='admin-deposits'),
     path('admin/deposits/<int:deposit_id>/confirm/', AdminConfirmDepositView.as_view(), name='admin-confirm-deposit'),
+    path('admin/support/tickets/', AdminSupportTicketListView.as_view(), name='admin-ticket-list'),
+    path('admin/support/tickets/<int:ticket_id>/reply/', AdminTicketReplyView.as_view(), name='admin-ticket-reply'),
+    path('admin/orders/', AdminOrdersListView.as_view(), name='admin-orders-list'),
 ]
