@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
-import { depositWallet, getUserProfile, getDashboardStats, getTransactions } from "@/lib/api";
+import { depositWallet, verifyFlutterwavePayment, getUserProfile, getDashboardStats, getTransactions } from "@/lib/api";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
@@ -27,6 +27,7 @@ export default function WalletPage() {
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState(null);
   const [realTransactions, setRealTransactions] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchWalletData = async () => {
     try {
@@ -48,6 +49,14 @@ export default function WalletPage() {
 
   useEffect(() => {
     fetchWalletData();
+
+    // Dynamically inject Flutterwave Checkout script
+    if (typeof window !== "undefined" && !window.FlutterwaveCheckout) {
+      const script = document.createElement("script");
+      script.src = "https://checkout.flutterwave.com/v3.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
   }, []);
 
   const balanceVal = stats?.wallet_balance ?? user?.wallet_balance ?? 0;
@@ -83,19 +92,86 @@ export default function WalletPage() {
     toast.info("Copied to clipboard!");
   };
 
-  const handleDepositSubmit = async (methodName) => {
+  const handleFlutterwavePayment = () => {
     const val = parseFloat(amount);
     if (!val || val <= 0) {
       toast.error("Please enter a valid deposit amount.");
       return;
     }
+
+    const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-demo-key";
+    const txRef = `FLW-${Date.now()}`;
+
+    if (!window.FlutterwaveCheckout) {
+      toast.error("Flutterwave SDK loading. Please try again in a few seconds.");
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      const res = await depositWallet({ amount: val, method: methodName || selectedMethod });
-      toast.success(res.message || `Deposit request of ₦${val.toLocaleString()} via ${methodName || selectedMethod} submitted! Awaiting admin approval.`);
+      window.FlutterwaveCheckout({
+        public_key: publicKey,
+        tx_ref: txRef,
+        amount: val,
+        currency: "NGN",
+        payment_options: "card,banktransfer,ussd",
+        customer: {
+          email: user?.email || "customer@hopesocial.com",
+          name: user?.username || "Customer",
+        },
+        customizations: {
+          title: "HopeSocial Wallet Top-Up",
+          description: `Fund ₦${val.toLocaleString()} to your marketplace wallet`,
+          logo: "https://checkout.flutterwave.com/assets/img/flw-logo.png",
+        },
+        callback: async (response) => {
+          try {
+            const verifyRes = await verifyFlutterwavePayment({
+              transaction_id: response.transaction_id,
+              tx_ref: response.tx_ref || txRef,
+              amount: val,
+            });
+            toast.success(verifyRes.message || `Successfully deposited ₦${val.toLocaleString()} via Flutterwave!`);
+            setIsDepositModalOpen(false);
+            fetchWalletData();
+          } catch (err) {
+            toast.error(err.message || "Payment verification failed.");
+          } finally {
+            setSubmitting(false);
+          }
+        },
+        onclose: () => {
+          setSubmitting(false);
+        },
+      });
+    } catch (err) {
+      setSubmitting(false);
+      toast.error("Could not initialize Flutterwave Checkout.");
+    }
+  };
+
+  const handleDepositSubmit = async (methodName) => {
+    const activeMethod = methodName || selectedMethod;
+    if (activeMethod === "Flutterwave") {
+      handleFlutterwavePayment();
+      return;
+    }
+
+    const val = parseFloat(amount);
+    if (!val || val <= 0) {
+      toast.error("Please enter a valid deposit amount.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await depositWallet({ amount: val, method: activeMethod });
+      toast.success(res.message || `Deposit request of ₦${val.toLocaleString()} via ${activeMethod} submitted! Awaiting admin approval.`);
       setIsDepositModalOpen(false);
       fetchWalletData();
     } catch (err) {
       toast.error(err.message || "Deposit failed");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -160,62 +236,85 @@ export default function WalletPage() {
             </div>
 
             {/* Payment Instructions Box */}
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 space-y-2.5 text-xs">
-              <div className="flex items-center justify-between text-emerald-400 font-semibold uppercase tracking-wider text-[11px]">
-                <span>Bank Transfer Details</span>
-                <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10">Manual Approval</Badge>
+            {selectedMethod === "Flutterwave" ? (
+              <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-sky-400 font-semibold uppercase tracking-wider text-[11px]">
+                  <span>Flutterwave Gateway</span>
+                  <Badge variant="outline" className="border-sky-500/40 text-sky-400 bg-sky-500/20">Instant Auto-Credit</Badge>
+                </div>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Pay securely using Debit Card, Bank Transfer, or USSD via Flutterwave. Your wallet will be credited automatically upon payment completion.
+                </p>
               </div>
+            ) : (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 space-y-2.5 text-xs">
+                <div className="flex items-center justify-between text-emerald-400 font-semibold uppercase tracking-wider text-[11px]">
+                  <span>Bank Transfer Details</span>
+                  <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10">Manual Approval</Badge>
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg bg-card p-2.5 border border-border/40">
-                  <div className="text-muted-foreground text-[10px]">Bank Name</div>
-                  <div className="font-bold text-xs text-foreground mt-0.5">Kuda Bank / GTBank</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-card p-2.5 border border-border/40">
+                    <div className="text-muted-foreground text-[10px]">Bank Name</div>
+                    <div className="font-bold text-xs text-foreground mt-0.5">Kuda Bank / GTBank</div>
+                  </div>
+                  <div className="rounded-lg bg-card p-2.5 border border-border/40">
+                    <div className="text-muted-foreground text-[10px]">Account Name</div>
+                    <div className="font-bold text-xs text-foreground mt-0.5">HopeSocial Ltd</div>
+                  </div>
                 </div>
-                <div className="rounded-lg bg-card p-2.5 border border-border/40">
-                  <div className="text-muted-foreground text-[10px]">Account Name</div>
-                  <div className="font-bold text-xs text-foreground mt-0.5">HopeSocial Ltd</div>
-                </div>
-              </div>
 
-              {/* Account Number Box */}
-              <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] text-muted-foreground">Account Number</div>
-                  <div className="font-bold font-mono text-lg text-emerald-400">2034829102</div>
+                {/* Account Number Box */}
+                <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Account Number</div>
+                    <div className="font-bold font-mono text-lg text-emerald-400">2034829102</div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    className="gap-1 text-xs"
+                    onClick={() => copyText("2034829102", "acc")}
+                  >
+                    <span>{copiedAcc ? "Copied!" : "Copy"}</span>
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  className="gap-1 text-xs"
-                  onClick={() => copyText("2034829102", "acc")}
-                >
-                  <span>{copiedAcc ? "Copied!" : "Copy"}</span>
-                </Button>
-              </div>
 
-              {/* Deposit Reference */}
-              <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] text-muted-foreground">Reference Code</div>
-                  <div className="font-bold font-mono text-xs text-foreground">{depositRef}</div>
+                {/* Deposit Reference */}
+                <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Reference Code</div>
+                    <div className="font-bold font-mono text-xs text-foreground">{depositRef}</div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="gap-1 text-xs text-muted-foreground"
+                    onClick={() => copyText(depositRef, "ref")}
+                  >
+                    <span>{copiedRef ? "Copied" : "Copy Ref"}</span>
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  className="gap-1 text-xs text-muted-foreground"
-                  onClick={() => copyText(depositRef, "ref")}
-                >
-                  <span>{copiedRef ? "Copied" : "Copy Ref"}</span>
-                </Button>
               </div>
-            </div>
+            )}
           </div>
 
           <Button
-            className="w-full font-bold py-5 bg-emerald-500 hover:bg-emerald-600 text-black shadow-md gap-2 cursor-pointer"
+            className={`w-full font-bold py-5 shadow-md gap-2 cursor-pointer ${
+              selectedMethod === "Flutterwave"
+                ? "bg-sky-500 hover:bg-sky-600 text-white"
+                : "bg-emerald-500 hover:bg-emerald-600 text-black"
+            }`}
             onClick={() => handleDepositSubmit(selectedMethod)}
+            disabled={submitting}
           >
-            <span>I Have Completed Transfer (₦{parseFloat(amount || 0).toLocaleString()})</span>
+            <span>
+              {submitting
+                ? "Processing..."
+                : selectedMethod === "Flutterwave"
+                ? `Pay ₦${parseFloat(amount || 0).toLocaleString()} via Flutterwave`
+                : `I Have Completed Transfer (₦${parseFloat(amount || 0).toLocaleString()})`}
+            </span>
           </Button>
         </DialogContent>
       </Dialog>

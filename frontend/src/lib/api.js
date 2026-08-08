@@ -130,6 +130,13 @@ export async function depositWallet(depositData) {
   });
 }
 
+export async function verifyFlutterwavePayment(data) {
+  return fetchApi("/wallet/verify-flutterwave/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // Referrals API
 export async function getReferrals() {
   return fetchApi("/referrals/");

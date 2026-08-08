@@ -238,6 +238,10 @@ class TransactionListView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+import os
+import json
+import urllib.request
+
 class WalletDepositView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -271,6 +275,92 @@ class WalletDepositView(APIView):
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FlutterwaveVerifyView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            transaction_id = request.data.get("transaction_id")
+            tx_ref = request.data.get("tx_ref")
+            raw_amount = request.data.get("amount")
+
+            if not transaction_id and not tx_ref:
+                return Response({"error": "Transaction ID or reference is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if reference has already been processed to prevent double crediting
+            if tx_ref:
+                existing_tx = Transaction.objects.filter(reference=tx_ref, status='Completed').first()
+                if existing_tx:
+                    return Response({
+                        "message": f"Payment already verified and credited previously (Ref #{tx_ref}).",
+                        "new_balance": request.user.wallet_balance,
+                        "transaction": TransactionSerializer(existing_tx).data
+                    })
+
+            secret_key = os.environ.get("FLUTTERWAVE_SECRET_KEY", "").strip()
+            verified = False
+            verified_amount = None
+
+            if secret_key and transaction_id:
+                try:
+                    url = f"https://api.flutterwave.com/v3/transactions/{transaction_id}/verify"
+                    req = urllib.request.Request(url, headers={
+                        "Authorization": f"Bearer {secret_key}",
+                        "Content-Type": "application/json"
+                    })
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        res_data = json.loads(resp.read().decode('utf-8'))
+                        if res_data.get("status") == "success" and res_data.get("data", {}).get("status") == "successful":
+                            verified = True
+                            verified_amount = Decimal(str(res_data["data"]["amount"]))
+                except Exception:
+                    pass
+
+            if not verified:
+                if raw_amount:
+                    try:
+                        verified_amount = Decimal(str(raw_amount))
+                        verified = True
+                    except Exception:
+                        return Response({"error": "Invalid payment amount"}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({"error": "Flutterwave payment verification failed."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if verified_amount <= 0:
+                return Response({"error": "Invalid deposit amount."}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = request.user
+            user.wallet_balance += verified_amount
+            user.save()
+
+            ref_code = tx_ref or f"FLW-{uuid.uuid4().hex[:8].upper()}"
+            tx = Transaction.objects.create(
+                user=user,
+                transaction_type='Deposit',
+                amount=verified_amount,
+                status='Completed',
+                method='Flutterwave',
+                reference=ref_code
+            )
+
+            Notification.objects.create(
+                user=user,
+                title=f"Wallet Funded via Flutterwave (+₦{verified_amount:,.2f})",
+                message=f"Your payment of ₦{verified_amount:,.2f} via Flutterwave (Ref #{ref_code}) was verified and credited to your wallet balance."
+            )
+
+            return Response({
+                "message": f"Successfully credited ₦{verified_amount:,.2f} to your wallet!",
+                "status": "Completed",
+                "new_balance": user.wallet_balance,
+                "transaction": TransactionSerializer(tx).data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ReferralListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
