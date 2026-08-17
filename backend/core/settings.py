@@ -68,12 +68,13 @@ DATABASES = {
 if os.environ.get('DATABASE_URL'):
     try:
         import dj_database_url
-        DATABASES['default'] = dj_database_url.config(
+        db_config = dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
             conn_max_age=600,
             conn_health_checks=True,
         )
-    except ImportError:
+        DATABASES['default'] = db_config
+    except Exception:
         pass
 
 AUTH_USER_MODEL = 'users.User'
