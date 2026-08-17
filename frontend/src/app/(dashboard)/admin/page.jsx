@@ -27,6 +27,7 @@ import {
   getAdminDeposits, confirmAdminDeposit, getUserProfile,
   getAdminSupportTickets, replyAdminSupportTicket, getAdminOrders,
 } from "@/lib/api";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 
 const handleDownloadAccountFile = (order) => {
   const serviceName = order.service_name || order.service || "Aged Social Account";
@@ -256,7 +257,8 @@ export default function AdminDashboardPage() {
   const totalRevenue = overview?.total_revenue ?? 0;
 
   return (
-    <div className="space-y-6">
+    <ProtectedRoute adminOnly>
+      <div className="space-y-6">
       <PageHeader
         title="Admin Control Center"
         description="Monitor system operations, view all user platform orders, enforce access controls, approve wallet deposits, and respond to support tickets."
@@ -894,5 +896,6 @@ export default function AdminDashboardPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </ProtectedRoute>
   );
 }

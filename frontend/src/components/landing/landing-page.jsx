@@ -72,6 +72,37 @@ const testimonials = [
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary selection:text-black">
+      {/* 1. LANDING NAVBAR */}
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur px-4 md:px-8 py-3.5">
+        <div className="mx-auto max-w-7xl flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/30">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-base font-extrabold tracking-tight text-foreground">HopeSocial</div>
+              <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-semibold">Marketplace</div>
+            </div>
+          </Link>
+
+          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-muted-foreground">
+            <Link href="/marketplace" className="hover:text-foreground transition-colors">Social Marketplace</Link>
+            <Link href="/accounts" className="hover:text-foreground transition-colors">Accounts Marketplace</Link>
+            <Link href="/api-docs" className="hover:text-foreground transition-colors">API Docs</Link>
+            <Link href="/support" className="hover:text-foreground transition-colors">Support</Link>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" asChild size="sm" className="font-semibold">
+              <Link href="/login">Sign In</Link>
+            </Button>
+            <Button asChild size="sm" className="font-bold bg-emerald-500 hover:bg-emerald-600 text-black shadow-md shadow-emerald-500/20">
+              <Link href="/register">Get Started</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
+
       {/* 2. HERO SECTION */}
       <section className="relative overflow-hidden pt-16 pb-20 md:pt-24 md:pb-28">
         {/* Glow Effects */}

@@ -30,6 +30,9 @@ export async function fetchApi(endpoint, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+    }
     let message = data.error || data.detail;
     if (!message && data && typeof data === "object") {
       const messages = Object.entries(data).map(([key, val]) => {

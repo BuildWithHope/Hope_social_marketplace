@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Lock, CheckCircle2 } from "lucide-react";
 import { getUserProfile, updateUserProfile, changePassword } from "@/lib/api";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 
 export default function Profile() {
   const [profile, setProfile] = useState({
@@ -59,9 +60,9 @@ export default function Profile() {
         phone_number: profile.phone_number,
         company_name: profile.company_name,
       });
-      toast.success("Profile information updated successfully!");
+      toast.success("Profile updated successfully!");
     } catch (err) {
-      toast.error(err.message || "Failed to update profile info.");
+      toast.error(err.message || "Failed to update profile");
     } finally {
       setProfileSaving(false);
     }
@@ -69,30 +70,27 @@ export default function Profile() {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("Please fill in current password and new password.");
-      return;
-    }
     if (newPassword !== confirmPassword) {
-      toast.error("New password and confirm password do not match.");
+      toast.error("New passwords do not match!");
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters long.");
+      toast.error("Password must be at least 6 characters long.");
       return;
     }
 
     setPasswordLoading(true);
     try {
-      const res = await changePassword(currentPassword, newPassword);
-      toast.success(res.message || "Password updated successfully!");
-
-      // Reset form state
+      await changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      toast.success("Password changed successfully!");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      toast.error(err.message || "Failed to change password. Please check your current password.");
+      toast.error(err.message || "Failed to change password");
     } finally {
       setPasswordLoading(false);
     }
@@ -101,79 +99,112 @@ export default function Profile() {
   const initials = (profile.first_name?.[0] || profile.email?.[0] || "U").toUpperCase();
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Profile & Account Settings" description="Manage your personal details, business information, and account password security." />
+    <ProtectedRoute>
+      <div className="space-y-6">
+        <PageHeader title="Profile & Account Settings" description="Manage your personal details, business information, and account password security." />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Profile Picture Card */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Profile Picture Card */}
+          <Card className="border-border/60 bg-card">
+            <CardHeader>
+              <CardTitle className="text-base">Account Identity</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-4 text-center">
+              <Avatar className="h-24 w-24 border border-border/80 shadow-md">
+                <AvatarFallback className="bg-primary/15 text-primary text-2xl font-bold">{initials}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="font-semibold text-sm text-foreground">{profile.first_name || profile.last_name ? `${profile.first_name} ${profile.last_name}` : "Marketplace User"}</div>
+                <div className="text-xs text-muted-foreground">{profile.email}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Edit Profile Form */}
+          <Card className="lg:col-span-2 border-border/60 bg-card">
+            <CardHeader>
+              <CardTitle className="text-base">Personal Information</CardTitle>
+              <CardDescription className="text-xs">Update your basic identity and contact information.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveProfile} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="first_name" className="text-xs font-medium">First Name</Label>
+                    <Input id="first_name" value={profile.first_name} onChange={(e) => setProfile((p) => ({ ...p, first_name: e.target.value }))} className="bg-muted/40" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="last_name" className="text-xs font-medium">Last Name</Label>
+                    <Input id="last_name" value={profile.last_name} onChange={(e) => setProfile((p) => ({ ...p, last_name: e.target.value }))} className="bg-muted/40" />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-xs font-medium">Email Address</Label>
+                    <Input id="email" value={profile.email} disabled className="bg-muted/60 cursor-not-allowed opacity-75" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phone_number" className="text-xs font-medium">Phone Number</Label>
+                    <Input id="phone_number" value={profile.phone_number} onChange={(e) => setProfile((p) => ({ ...p, phone_number: e.target.value }))} className="bg-muted/40" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="company_name" className="text-xs font-medium">Company / Agency Name</Label>
+                  <Input id="company_name" value={profile.company_name} onChange={(e) => setProfile((p) => ({ ...p, company_name: e.target.value }))} className="bg-muted/40" />
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button type="submit" disabled={profileSaving} size="sm" className="font-semibold cursor-pointer">
+                    {profileSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Changes...
+                      </>
+                    ) : (
+                      "Save Profile"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Change Password Card */}
         <Card className="border-border/60 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">Account Identity</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4 text-center">
-            <Avatar className="h-24 w-24 border border-border/80 shadow-md">
-              <AvatarFallback className="bg-primary/15 text-primary text-2xl font-bold">{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="font-semibold text-sm text-foreground">{profile.first_name || profile.last_name ? `${profile.first_name} ${profile.last_name}` : "Marketplace User"}</div>
-              <div className="text-xs text-muted-foreground">{profile.email}</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Personal Information */}
-        <Card className="lg:col-span-2 border-border/60 bg-card">
-          <CardHeader>
-            <CardTitle className="text-base">Personal Information</CardTitle>
-            <CardDescription>Update your personal name and contact details.</CardDescription>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Lock className="h-4 w-4 text-primary" /> Security & Password Update
+            </CardTitle>
+            <CardDescription className="text-xs">Ensure your account uses a strong password to protect your funds.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSaveProfile} className="space-y-4">
+            <form onSubmit={handleChangePassword} className="space-y-4 max-w-xl">
+              <div className="space-y-1.5">
+                <Label htmlFor="curr_pass" className="text-xs font-medium">Current Password</Label>
+                <Input id="curr_pass" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="bg-muted/40" />
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label>First name</Label>
-                  <Input
-                    value={profile.first_name}
-                    onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                    className="bg-muted/40 text-xs"
-                    placeholder="First Name"
-                  />
+                  <Label htmlFor="new_pass" className="text-xs font-medium">New Password</Label>
+                  <Input id="new_pass" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="bg-muted/40" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Last name</Label>
-                  <Input
-                    value={profile.last_name}
-                    onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                    className="bg-muted/40 text-xs"
-                    placeholder="Last Name"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Email Address</Label>
-                  <Input
-                    value={profile.email}
-                    disabled
-                    className="bg-muted/20 text-xs text-muted-foreground cursor-not-allowed"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Phone Number</Label>
-                  <Input
-                    value={profile.phone_number}
-                    onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
-                    className="bg-muted/40 text-xs"
-                    placeholder="+234 800 000 0000"
-                  />
+                  <Label htmlFor="confirm_pass" className="text-xs font-medium">Confirm New Password</Label>
+                  <Input id="confirm_pass" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="bg-muted/40" />
                 </div>
               </div>
+
               <div className="flex justify-end pt-2">
-                <Button type="submit" disabled={profileSaving} size="sm" className="font-semibold cursor-pointer">
-                  {profileSaving ? (
+                <Button type="submit" disabled={passwordLoading} size="sm" className="font-semibold cursor-pointer">
+                  {passwordLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating Password...
                     </>
                   ) : (
-                    "Save Changes"
+                    "Update Password"
                   )}
                 </Button>
               </div>
@@ -181,103 +212,6 @@ export default function Profile() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Business Information */}
-      <Card className="border-border/60 bg-card">
-        <CardHeader>
-          <CardTitle className="text-base">Business & Organization Details</CardTitle>
-          <CardDescription>Configure business info for invoices and account records.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Company Name</Label>
-              <Input
-                value={profile.company_name}
-                onChange={(e) => setProfile({ ...profile, company_name: e.target.value })}
-                className="bg-muted/40 text-xs"
-                placeholder="e.g. HopeSocial Media Agency"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Country</Label>
-              <Input
-                defaultValue="Nigeria"
-                disabled
-                className="bg-muted/20 text-xs text-muted-foreground"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end pt-4">
-            <Button onClick={handleSaveProfile} disabled={profileSaving} size="sm" className="font-semibold cursor-pointer">
-              Save Business Info
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Security & Password Change */}
-      <Card className="border-border/60 bg-card">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Lock className="h-4 w-4 text-primary" /> Security & Password Update
-          </CardTitle>
-          <CardDescription>
-            Change your account password. Once changed, your old password will immediately become invalid.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label>Current Password *</Label>
-                <Input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="bg-muted/40 text-xs"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>New Password *</Label>
-                <Input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 6 characters"
-                  className="bg-muted/40 text-xs"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Confirm New Password *</Label>
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
-                  className="bg-muted/40 text-xs"
-                  required
-                />
-              </div>
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={passwordLoading} size="sm" className="font-semibold cursor-pointer">
-                {passwordLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating Password...
-                  </>
-                ) : (
-                  "Update Password"
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    </ProtectedRoute>
   );
 }
-

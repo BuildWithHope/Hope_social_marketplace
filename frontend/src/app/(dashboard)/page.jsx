@@ -18,15 +18,25 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
 } from "recharts";
-import { recentOrders, monthlySpending as mockMonthlySpending, topServices, platformIcons } from "@/data/mock";
-import { getDashboardStats, getUserProfile, getOrders } from "@/lib/api";
+import { recentOrders, topServices, platformIcons } from "@/data/mock";
+import { getDashboardStats, getOrders } from "@/lib/api";
 import { LandingPage } from "@/components/landing/landing-page";
+import { useAuth } from "@/context/auth-context";
 
 const topServicesWithColors = [
   { name: "IG Followers", v: 42, color: "#E1306C" },
   { name: "TikTok Views", v: 28, color: "#00F2FE" },
   { name: "YT Subscribers", v: 17, color: "#FF0000" },
   { name: "Telegram Members", v: 13, color: "#0088CC" },
+];
+
+const mockMonthlySpending = [
+  { month: "Jan", amount: 12000 },
+  { month: "Feb", amount: 28000 },
+  { month: "Mar", amount: 45000 },
+  { month: "Apr", amount: 32000 },
+  { month: "May", amount: 64000 },
+  { month: "Jun", amount: 89000 },
 ];
 
 const handleDownloadAccountFile = (order) => {
@@ -45,7 +55,6 @@ const handleDownloadAccountFile = (order) => {
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; background: #0b0f19; color: #f8fafc; margin: 0; }
             .card { max-width: 550px; margin: 20px auto; background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
-            .badge { display: inline-block; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 16px; }
             h2 { color: #ffffff; margin-top: 0; font-size: 20px; font-weight: 700; border-b: 1px solid #1f2937; padding-bottom: 12px; }
             .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #1f2937; font-size: 13px; }
             .label { color: #9ca3af; font-weight: 500; }
@@ -85,32 +94,27 @@ const handleDownloadAccountFile = (order) => {
 };
 
 export default function RootPage() {
-  const [user, setUser] = useState(null);
+  const { user: authUser, isAuth } = useAuth();
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [isAuth, setIsAuth] = useState(false);
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) {
-      return;
+    if (isAuth) {
+      Promise.all([
+        getDashboardStats().catch(() => null),
+        getOrders().catch(() => []),
+      ]).then(([sData, oData]) => {
+        setStats(sData);
+        setOrders(oData || []);
+      });
     }
-
-    setIsAuth(true);
-    Promise.all([
-      getUserProfile().catch(() => null),
-      getDashboardStats().catch(() => null),
-      getOrders().catch(() => []),
-    ]).then(([uData, sData, oData]) => {
-      setUser(uData);
-      setStats(sData);
-      setOrders(oData || []);
-    });
-  }, []);
+  }, [isAuth]);
 
   if (!isAuth) {
     return <LandingPage />;
   }
+
+  const user = authUser;
 
   const balanceVal = stats?.wallet_balance ?? user?.wallet_balance ?? 0;
   const formattedBalance = `₦${parseFloat(balanceVal || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;

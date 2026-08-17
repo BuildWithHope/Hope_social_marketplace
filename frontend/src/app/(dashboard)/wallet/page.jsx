@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
+import { ProtectedRoute } from "@/components/auth/protected-route";
+
 const methods = [
   { name: "Bank Transfer", desc: "Instant local NGN transfer · 0% fee", icon: Landmark },
   { name: "Flutterwave", desc: "Cards & Mobile Money", icon: CreditCard },
@@ -176,206 +178,208 @@ export default function WalletPage() {
   };
 
   return (
-    <div>
-      <PageHeader
-        title="Wallet"
-        description="Fund, spend and manage your marketplace balance in Naira (₦)."
-        actions={
-          <Button size="lg" onClick={openDepositModal} className="font-semibold shadow-md bg-emerald-500 hover:bg-emerald-600 text-black gap-2">
-            <Plus className="h-4 w-4" /> Add funds
-          </Button>
-        }
-      />
+    <ProtectedRoute>
+      <div>
+        <PageHeader
+          title="Wallet"
+          description="Fund, spend and manage your marketplace balance in Naira (₦)."
+          actions={
+            <Button size="lg" onClick={openDepositModal} className="font-semibold shadow-md bg-emerald-500 hover:bg-emerald-600 text-black gap-2">
+              <Plus className="h-4 w-4" /> Add funds
+            </Button>
+          }
+        />
 
-      {/* Enhanced Payment Gateway Modal */}
-      <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <CreditCard className="h-5 w-5 text-emerald-400" />
-              <span>Fund Wallet — Payment Options</span>
-            </DialogTitle>
-            <DialogDescription>
-              Enter amount and transfer to the account details below.
-            </DialogDescription>
-          </DialogHeader>
+        {/* Enhanced Payment Gateway Modal */}
+        <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <CreditCard className="h-5 w-5 text-emerald-400" />
+                <span>Fund Wallet — Payment Options</span>
+              </DialogTitle>
+              <DialogDescription>
+                Enter amount and transfer to the account details below.
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Deposit Amount (₦)</label>
-              <Input
-                placeholder="Amount in Naira (e.g. 10000)"
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="bg-muted/40 font-mono text-base font-bold text-emerald-400"
-              />
-            </div>
-
-            {/* Payment Method Selector Grid */}
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Select Payment Channel</label>
-              <div className="grid grid-cols-2 gap-2">
-                {methods.map((m) => (
-                  <button
-                    key={m.name}
-                    type="button"
-                    onClick={() => setSelectedMethod(m.name)}
-                    className={`flex flex-col items-start rounded-xl border p-3 text-left transition ${
-                      selectedMethod === m.name
-                        ? "border-emerald-500 bg-emerald-500/10"
-                        : "border-border/60 bg-muted/20 hover:bg-muted/40"
-                    }`}
-                  >
-                    <m.icon className={`h-5 w-5 ${selectedMethod === m.name ? "text-emerald-400" : "text-primary"}`} />
-                    <div className="mt-2 text-xs font-bold">{m.name}</div>
-                    <div className="text-[10px] text-muted-foreground">{m.desc}</div>
-                  </button>
-                ))}
+            <div className="space-y-4 py-2">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Deposit Amount (₦)</label>
+                <Input
+                  placeholder="Amount in Naira (e.g. 10000)"
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="bg-muted/40 font-mono text-base font-bold text-emerald-400"
+                />
               </div>
-            </div>
 
-            {/* Payment Instructions Box */}
-            {selectedMethod === "Flutterwave" ? (
-              <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 space-y-2 text-xs">
-                <div className="flex items-center justify-between text-sky-400 font-semibold uppercase tracking-wider text-[11px]">
-                  <span>Flutterwave Gateway</span>
-                  <Badge variant="outline" className="border-sky-500/40 text-sky-400 bg-sky-500/20">Instant Auto-Credit</Badge>
-                </div>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Pay securely using Debit Card, Bank Transfer, or USSD via Flutterwave. Your wallet will be credited automatically upon payment completion.
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 space-y-2.5 text-xs">
-                <div className="flex items-center justify-between text-emerald-400 font-semibold uppercase tracking-wider text-[11px]">
-                  <span>Bank Transfer Details</span>
-                  <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10">Manual Approval</Badge>
-                </div>
-
+              {/* Payment Method Selector Grid */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Select Payment Channel</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-card p-2.5 border border-border/40">
-                    <div className="text-muted-foreground text-[10px]">Bank Name</div>
-                    <div className="font-bold text-xs text-foreground mt-0.5">Kuda Bank / GTBank</div>
-                  </div>
-                  <div className="rounded-lg bg-card p-2.5 border border-border/40">
-                    <div className="text-muted-foreground text-[10px]">Account Name</div>
-                    <div className="font-bold text-xs text-foreground mt-0.5">HopeSocial Ltd</div>
-                  </div>
-                </div>
-
-                {/* Account Number Box */}
-                <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] text-muted-foreground">Account Number</div>
-                    <div className="font-bold font-mono text-lg text-emerald-400">2034829102</div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    className="gap-1 text-xs"
-                    onClick={() => copyText("2034829102", "acc")}
-                  >
-                    <span>{copiedAcc ? "Copied!" : "Copy"}</span>
-                  </Button>
-                </div>
-
-                {/* Deposit Reference */}
-                <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] text-muted-foreground">Reference Code</div>
-                    <div className="font-bold font-mono text-xs text-foreground">{depositRef}</div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    className="gap-1 text-xs text-muted-foreground"
-                    onClick={() => copyText(depositRef, "ref")}
-                  >
-                    <span>{copiedRef ? "Copied" : "Copy Ref"}</span>
-                  </Button>
+                  {methods.map((m) => (
+                    <button
+                      key={m.name}
+                      type="button"
+                      onClick={() => setSelectedMethod(m.name)}
+                      className={`flex flex-col items-start rounded-xl border p-3 text-left transition ${
+                        selectedMethod === m.name
+                          ? "border-emerald-500 bg-emerald-500/10"
+                          : "border-border/60 bg-muted/20 hover:bg-muted/40"
+                      }`}
+                    >
+                      <m.icon className={`h-5 w-5 ${selectedMethod === m.name ? "text-emerald-400" : "text-primary"}`} />
+                      <div className="mt-2 text-xs font-bold">{m.name}</div>
+                      <div className="text-[10px] text-muted-foreground">{m.desc}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
 
-          <Button
-            className={`w-full font-bold py-5 shadow-md gap-2 cursor-pointer ${
-              selectedMethod === "Flutterwave"
-                ? "bg-sky-500 hover:bg-sky-600 text-white"
-                : "bg-emerald-500 hover:bg-emerald-600 text-black"
-            }`}
-            onClick={() => handleDepositSubmit(selectedMethod)}
-            disabled={submitting}
-          >
-            <span>
-              {submitting
-                ? "Processing..."
-                : selectedMethod === "Flutterwave"
-                ? `Pay ₦${parseFloat(amount || 0).toLocaleString()} via Flutterwave`
-                : `I Have Completed Transfer (₦${parseFloat(amount || 0).toLocaleString()})`}
-            </span>
-          </Button>
-        </DialogContent>
-      </Dialog>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Available balance" value={formattedBalance} delta={balanceVal > 0 ? "Active Balance" : "₦0.00 balance"} icon={Wallet} tone="primary" />
-        <StatCard label="Total spent" value={formattedSpent} icon={ArrowDownRight} />
-        <StatCard label="Total deposited" value={formattedDeposited} icon={ArrowUpRight} />
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card className="border-border/60 bg-card">
-          <CardHeader>
-            <CardTitle className="text-base">Recent deposits</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {deposits.length === 0 ? (
-                <div className="py-8 text-center text-xs text-muted-foreground">
-                  No deposits recorded yet. Click "Add funds" above to make your first deposit.
+              {/* Payment Instructions Box */}
+              {selectedMethod === "Flutterwave" ? (
+                <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-sky-400 font-semibold uppercase tracking-wider text-[11px]">
+                    <span>Flutterwave Gateway</span>
+                    <Badge variant="outline" className="border-sky-500/40 text-sky-400 bg-sky-500/20">Instant Auto-Credit</Badge>
+                  </div>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Pay securely using Debit Card, Bank Transfer, or USSD via Flutterwave. Your wallet will be credited automatically upon payment completion.
+                  </p>
                 </div>
               ) : (
-                deposits.map((t) => (
-                  <div key={t.id || t.reference} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-3 text-sm">
-                    <div>
-                      <div className="font-mono text-xs text-muted-foreground">{t.reference || t.id} · {t.method || t.payment_method}</div>
-                      <div className="font-semibold text-emerald-400">+₦{parseFloat(t.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
-                    </div>
-                    <StatusBadge status={t.status || "Completed"} />
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between text-emerald-400 font-semibold uppercase tracking-wider text-[11px]">
+                    <span>Bank Transfer Details</span>
+                    <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10">Manual Approval</Badge>
                   </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-border/60 bg-card">
-          <CardHeader>
-            <CardTitle className="text-base">Recent withdrawals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {withdrawals.length === 0 ? (
-                <div className="py-8 text-center text-xs text-muted-foreground">
-                  No withdrawals recorded yet.
-                </div>
-              ) : (
-                withdrawals.map((t) => (
-                  <div key={t.id || t.reference} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-3 text-sm">
-                    <div>
-                      <div className="font-mono text-xs text-muted-foreground">{t.reference || t.id} · {t.method || t.payment_method}</div>
-                      <div className="font-semibold text-rose-400">-₦{parseFloat(t.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg bg-card p-2.5 border border-border/40">
+                      <div className="text-muted-foreground text-[10px]">Bank Name</div>
+                      <div className="font-bold text-xs text-foreground mt-0.5">Kuda Bank / GTBank</div>
                     </div>
-                    <StatusBadge status={t.status || "Completed"} />
+                    <div className="rounded-lg bg-card p-2.5 border border-border/40">
+                      <div className="text-muted-foreground text-[10px]">Account Name</div>
+                      <div className="font-bold text-xs text-foreground mt-0.5">HopeSocial Ltd</div>
+                    </div>
                   </div>
-                ))
+
+                  {/* Account Number Box */}
+                  <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground">Account Number</div>
+                      <div className="font-bold font-mono text-lg text-emerald-400">2034829102</div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="gap-1 text-xs"
+                      onClick={() => copyText("2034829102", "acc")}
+                    >
+                      <span>{copiedAcc ? "Copied!" : "Copy"}</span>
+                    </Button>
+                  </div>
+
+                  {/* Deposit Reference */}
+                  <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground">Reference Code</div>
+                      <div className="font-bold font-mono text-xs text-foreground">{depositRef}</div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      className="gap-1 text-xs text-muted-foreground"
+                      onClick={() => copyText(depositRef, "ref")}
+                    >
+                      <span>{copiedRef ? "Copied" : "Copy Ref"}</span>
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
-          </CardContent>
-        </Card>
+
+            <Button
+              className={`w-full font-bold py-5 shadow-md gap-2 cursor-pointer ${
+                selectedMethod === "Flutterwave"
+                  ? "bg-sky-500 hover:bg-sky-600 text-white"
+                  : "bg-emerald-500 hover:bg-emerald-600 text-black"
+              }`}
+              onClick={() => handleDepositSubmit(selectedMethod)}
+              disabled={submitting}
+            >
+              <span>
+                {submitting
+                  ? "Processing..."
+                  : selectedMethod === "Flutterwave"
+                  ? `Pay ₦${parseFloat(amount || 0).toLocaleString()} via Flutterwave`
+                  : `I Have Completed Transfer (₦${parseFloat(amount || 0).toLocaleString()})`}
+              </span>
+            </Button>
+          </DialogContent>
+        </Dialog>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard label="Available balance" value={formattedBalance} delta={balanceVal > 0 ? "Active Balance" : "₦0.00 balance"} icon={Wallet} tone="primary" />
+          <StatCard label="Total spent" value={formattedSpent} icon={ArrowDownRight} />
+          <StatCard label="Total deposited" value={formattedDeposited} icon={ArrowUpRight} />
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <Card className="border-border/60 bg-card">
+            <CardHeader>
+              <CardTitle className="text-base">Recent deposits</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {deposits.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-muted-foreground">
+                    No deposits recorded yet. Click "Add funds" above to make your first deposit.
+                  </div>
+                ) : (
+                  deposits.map((t) => (
+                    <div key={t.id || t.reference} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-3 text-sm">
+                      <div>
+                        <div className="font-mono text-xs text-muted-foreground">{t.reference || t.id} · {t.method || t.payment_method}</div>
+                        <div className="font-semibold text-emerald-400">+₦{parseFloat(t.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
+                      </div>
+                      <StatusBadge status={t.status || "Completed"} />
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/60 bg-card">
+            <CardHeader>
+              <CardTitle className="text-base">Recent withdrawals</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {withdrawals.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-muted-foreground">
+                    No withdrawals recorded yet.
+                  </div>
+                ) : (
+                  withdrawals.map((t) => (
+                    <div key={t.id || t.reference} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 p-3 text-sm">
+                      <div>
+                        <div className="font-mono text-xs text-muted-foreground">{t.reference || t.id} · {t.method || t.payment_method}</div>
+                        <div className="font-semibold text-rose-400">-₦{parseFloat(t.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
+                      </div>
+                      <StatusBadge status={t.status || "Completed"} />
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }

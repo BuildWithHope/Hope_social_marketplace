@@ -5,7 +5,8 @@ import { Bell, Menu, Search, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getUserProfile, getNotifications } from "@/lib/api";
+import { getNotifications } from "@/lib/api";
+import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,27 +19,22 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
 export function Navbar({ onOpenMobile }) {
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const [userNotifications, setUserNotifications] = useState([]);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        if (token) {
-          const [profile, notes] = await Promise.all([
-            getUserProfile().catch(() => null),
-            getNotifications().catch(() => []),
-          ]);
-          setUser(profile);
+    const fetchNotifications = async () => {
+      if (user) {
+        try {
+          const notes = await getNotifications();
           setUserNotifications(notes || []);
+        } catch (err) {
+          setUserNotifications([]);
         }
-      } catch (err) {
-        setUser(null);
       }
     };
-    fetchUser();
-  }, []);
+    fetchNotifications();
+  }, [user]);
 
   const balanceVal = user ? parseFloat(user.wallet_balance || 0) : 0;
   const formattedBalance = `₦${balanceVal.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
@@ -124,17 +120,13 @@ export function Navbar({ onOpenMobile }) {
                   <Link href="/support">Support</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/login"
-                    onClick={() => {
-                      if (typeof window !== "undefined") {
-                        localStorage.removeItem("token");
-                      }
-                    }}
-                  >
-                    Log out
-                  </Link>
+                <DropdownMenuItem
+                  onClick={() => {
+                    logout();
+                  }}
+                  className="cursor-pointer text-rose-400 focus:text-rose-400"
+                >
+                  Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

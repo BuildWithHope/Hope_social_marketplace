@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,7 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { getUserProfile } from "@/lib/api";
+import { useAuth } from "@/context/auth-context";
 
 const baseNav = [
   { to: "/", label: "Dashboard", icon: Home, authRequired: true },
@@ -26,22 +25,7 @@ const baseNav = [
 
 export function AppSidebar({ collapsed, onToggle, onNavigate }) {
   const pathname = usePathname();
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        if (token) {
-          const profile = await getUserProfile();
-          setUser(profile);
-        }
-      } catch (err) {
-        setUser(null);
-      }
-    };
-    fetchUser();
-  }, []);
+  const { user, logout } = useAuth();
 
   const navItems = baseNav.filter((item) => {
     if (item.adminOnly) {
@@ -61,15 +45,17 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }) {
       )}
     >
       <div className="flex h-16 items-center gap-2 px-4 border-b border-sidebar-border">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/30">
-          <Sparkles className="h-4 w-4" />
-        </div>
-        {!collapsed && (
-          <div className="min-w-0">
-            <div className="text-sm font-semibold tracking-tight">HopeSocial</div>
-            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Marketplace</div>
+        <Link href="/" className="flex items-center gap-2 min-w-0">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/30">
+            <Sparkles className="h-4 w-4" />
           </div>
-        )}
+          {!collapsed && (
+            <div className="min-w-0">
+              <div className="text-sm font-semibold tracking-tight">HopeSocial</div>
+              <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Marketplace</div>
+            </div>
+          )}
+        </Link>
         <Button
           variant="ghost" size="icon"
           onClick={onToggle}
@@ -92,7 +78,7 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }) {
                   className={cn(
                     "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors relative",
                     active
-                      ? "bg-sidebar-accent text-foreground"
+                      ? "bg-sidebar-accent text-foreground font-semibold"
                       : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
                   )}
                 >
@@ -108,20 +94,17 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }) {
 
       <div className="border-t border-sidebar-border p-3">
         {user ? (
-          <Link
-            href="/login"
+          <button
             onClick={() => {
-              if (typeof window !== "undefined") {
-                localStorage.removeItem("token");
-              }
+              logout();
             }}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground",
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-foreground cursor-pointer text-left",
             )}
           >
             <LogOut className="h-[18px] w-[18px] shrink-0" />
             {!collapsed && <span>Sign out</span>}
-          </Link>
+          </button>
         ) : (
           <Link
             href="/login"
