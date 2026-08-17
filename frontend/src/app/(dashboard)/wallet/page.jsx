@@ -17,6 +17,10 @@ import { toast } from "sonner";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 
+const BANK_NAME = process.env.NEXT_PUBLIC_BANK_NAME || "Moniepoint / GTBank";
+const ACCOUNT_NAME = process.env.NEXT_PUBLIC_ACCOUNT_NAME || "HopeSocial Ltd";
+const ACCOUNT_NUMBER = process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || "2034829102";
+
 const methods = [
   { name: "Bank Transfer", desc: "Instant local NGN transfer · 0% fee", icon: Landmark },
   { name: "Flutterwave", desc: "Cards & Mobile Money", icon: CreditCard },
@@ -259,11 +263,11 @@ export default function WalletPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg bg-card p-2.5 border border-border/40">
                       <div className="text-muted-foreground text-[10px]">Bank Name</div>
-                      <div className="font-bold text-xs text-foreground mt-0.5">Kuda Bank / GTBank</div>
+                      <div className="font-bold text-xs text-foreground mt-0.5">{BANK_NAME}</div>
                     </div>
                     <div className="rounded-lg bg-card p-2.5 border border-border/40">
                       <div className="text-muted-foreground text-[10px]">Account Name</div>
-                      <div className="font-bold text-xs text-foreground mt-0.5">HopeSocial Ltd</div>
+                      <div className="font-bold text-xs text-foreground mt-0.5">{ACCOUNT_NAME}</div>
                     </div>
                   </div>
 
@@ -271,13 +275,13 @@ export default function WalletPage() {
                   <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
                     <div>
                       <div className="text-[10px] text-muted-foreground">Account Number</div>
-                      <div className="font-bold font-mono text-lg text-emerald-400">2034829102</div>
+                      <div className="font-bold font-mono text-lg text-emerald-400">{ACCOUNT_NUMBER}</div>
                     </div>
                     <Button
                       variant="outline"
                       size="xs"
                       className="gap-1 text-xs"
-                      onClick={() => copyText("2034829102", "acc")}
+                      onClick={() => copyText(ACCOUNT_NUMBER, "acc")}
                     >
                       <span>{copiedAcc ? "Copied!" : "Copy"}</span>
                     </Button>
