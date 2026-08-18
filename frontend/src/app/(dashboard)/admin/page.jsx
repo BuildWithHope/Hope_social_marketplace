@@ -26,8 +26,10 @@ import {
   getAdminOverview, getAdminUsers, toggleUserBlock,
   getAdminDeposits, confirmAdminDeposit, getUserProfile,
   getAdminSupportTickets, replyAdminSupportTicket, getAdminOrders,
+  getPaymentConfig, updatePaymentConfig
 } from "@/lib/api";
 import { ProtectedRoute } from "@/components/auth/protected-route";
+
 
 const handleDownloadAccountFile = (order) => {
   const serviceName = order.service_name || order.service || "Aged Social Account";
@@ -99,6 +101,14 @@ export default function AdminDashboardPage() {
   const [orderSearch, setOrderSearch] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
+  const [bankConfigForm, setBankConfigForm] = useState({
+    bank_name: "",
+    account_name: "",
+    account_number: "",
+    flutterwave_public_key: "",
+  });
+  const [savingBankConfig, setSavingBankConfig] = useState(false);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -106,18 +116,27 @@ export default function AdminDashboardPage() {
       setCurrentUser(profile);
 
       if (profile && (profile.is_staff || profile.is_superuser)) {
-        const [ov, us, dp, tk, ords] = await Promise.all([
+        const [ov, us, dp, tk, ords, pCfg] = await Promise.all([
           getAdminOverview().catch(() => null),
           getAdminUsers().catch(() => []),
           getAdminDeposits().catch(() => []),
           getAdminSupportTickets().catch(() => []),
           getAdminOrders().catch(() => []),
+          getPaymentConfig().catch(() => null),
         ]);
         setOverview(ov);
         setUsers(us || []);
         setDeposits(dp || []);
         setAdminTickets(tk || []);
         setAdminOrders(ords || []);
+        if (pCfg) {
+          setBankConfigForm({
+            bank_name: pCfg.bank_name || "",
+            account_name: pCfg.account_name || "",
+            account_number: pCfg.account_number || "",
+            flutterwave_public_key: pCfg.flutterwave_public_key || "",
+          });
+        }
       }
     } catch (err) {
       toast.error("Failed to load admin telemetry data.");
@@ -125,6 +144,20 @@ export default function AdminDashboardPage() {
       setLoading(false);
     }
   };
+
+  const handleSaveBankConfig = async (e) => {
+    e.preventDefault();
+    setSavingBankConfig(true);
+    try {
+      const res = await updatePaymentConfig(bankConfigForm);
+      toast.success(res.message || "Live payment and bank settings updated successfully!");
+    } catch (err) {
+      toast.error(err.message || "Failed to update payment settings.");
+    } finally {
+      setSavingBankConfig(false);
+    }
+  };
+
 
   useEffect(() => {
     loadData();
@@ -372,6 +405,72 @@ export default function AdminDashboardPage() {
                     Review Pending Payments ({pendingDepositsCount})
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Live Payment & Bank Details Editor Card */}
+            <Card className="border-emerald-500/30 bg-card md:col-span-3">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold flex items-center gap-2 text-emerald-400">
+                  <CreditCard className="h-5 w-5 text-emerald-400" /> Live Bank Account & Payment Gateway Settings
+                </CardTitle>
+                <CardDescription>
+                  Update your real bank transfer account details and Flutterwave keys here. Changes apply immediately live across the entire marketplace for all users.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSaveBankConfig} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Bank Name</label>
+                    <Input
+                      placeholder="e.g. Moniepoint / GTBank / Kuda"
+                      value={bankConfigForm.bank_name}
+                      onChange={(e) => setBankConfigForm({ ...bankConfigForm, bank_name: e.target.value })}
+                      className="bg-muted/40 text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Account Name</label>
+                    <Input
+                      placeholder="e.g. HopeSocial Ltd"
+                      value={bankConfigForm.account_name}
+                      onChange={(e) => setBankConfigForm({ ...bankConfigForm, account_name: e.target.value })}
+                      className="bg-muted/40 text-xs font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Account Number</label>
+                    <Input
+                      placeholder="e.g. 2034829102"
+                      value={bankConfigForm.account_number}
+                      onChange={(e) => setBankConfigForm({ ...bankConfigForm, account_number: e.target.value })}
+                      className="bg-muted/40 text-xs font-mono font-bold text-emerald-400"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Flutterwave Public Key</label>
+                    <Input
+                      placeholder="FLWPUBK_LIVE-..."
+                      value={bankConfigForm.flutterwave_public_key}
+                      onChange={(e) => setBankConfigForm({ ...bankConfigForm, flutterwave_public_key: e.target.value })}
+                      className="bg-muted/40 text-xs font-mono"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 lg:col-span-4 flex justify-end pt-2">
+                    <Button
+                      type="submit"
+                      disabled={savingBankConfig}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold gap-2 text-xs shadow-md"
+                    >
+                      {savingBankConfig ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                      <span>Save & Publish Live Payment Details</span>
+                    </Button>
+                  </div>
+                </form>
               </CardContent>
             </Card>
 

@@ -1,7 +1,12 @@
 from django.contrib import admin
-from .models import Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply, Provider
+from .models import Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply, Provider, PaymentSetting
+
+@admin.register(PaymentSetting)
+class PaymentSettingAdmin(admin.ModelAdmin):
+    list_display = ['id', 'bank_name', 'account_name', 'account_number', 'flutterwave_public_key', 'updated_at']
 
 @admin.register(Provider)
+
 class ProviderAdmin(admin.ModelAdmin):
     list_display = ['id', 'name', 'api_url', 'margin_percentage', 'is_active', 'created_at']
     list_filter = ['is_active']

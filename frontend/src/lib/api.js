@@ -235,3 +235,11 @@ export async function getPaymentConfig() {
   return fetchApi("/marketplace/payment-config/");
 }
 
+export async function updatePaymentConfig(data) {
+  return fetchApi("/marketplace/payment-config/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+

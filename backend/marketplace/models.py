@@ -149,3 +149,16 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for @{self.user.username}: {self.title}"
+
+
+class PaymentSetting(models.Model):
+    bank_name = models.CharField(max_length=100, default="Moniepoint / GTBank")
+    account_name = models.CharField(max_length=100, default="HopeSocial Ltd")
+    account_number = models.CharField(max_length=50, default="2034829102")
+    flutterwave_public_key = models.CharField(max_length=255, default="FLWPUBK_TEST-demo-key", blank=True)
+    flutterwave_secret_key = models.CharField(max_length=255, default="", blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Payment Settings ({self.bank_name} - {self.account_number})"
+

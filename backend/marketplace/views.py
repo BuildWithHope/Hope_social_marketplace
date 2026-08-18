@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from django.db.models import Sum
-from .models import Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply, Provider, Notification
+from .models import Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply, Provider, Notification, PaymentSetting
 from .serializers import (
     ServiceSerializer, AccountItemSerializer, OrderSerializer,
     TransactionSerializer, ReferralSerializer, SupportTicketSerializer, TicketReplySerializer,
@@ -281,17 +281,54 @@ class PaymentConfigView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        bank_name = os.environ.get("BANK_NAME", os.environ.get("NEXT_PUBLIC_BANK_NAME", "Moniepoint / GTBank")).strip()
-        account_name = os.environ.get("ACCOUNT_NAME", os.environ.get("NEXT_PUBLIC_ACCOUNT_NAME", "HopeSocial Ltd")).strip()
-        account_number = os.environ.get("ACCOUNT_NUMBER", os.environ.get("NEXT_PUBLIC_ACCOUNT_NUMBER", "2034829102")).strip()
-        flutterwave_public_key = os.environ.get("FLUTTERWAVE_PUBLIC_KEY", os.environ.get("NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY", "FLWPUBK_TEST-demo-key")).strip()
+        setting = PaymentSetting.objects.first()
+
+        bank_name = (setting.bank_name if setting and setting.bank_name else None) or \
+                    os.environ.get("BANK_NAME") or os.environ.get("NEXT_PUBLIC_BANK_NAME") or os.environ.get("BANK") or "Moniepoint / GTBank"
+
+        account_name = (setting.account_name if setting and setting.account_name else None) or \
+                       os.environ.get("ACCOUNT_NAME") or os.environ.get("NEXT_PUBLIC_ACCOUNT_NAME") or os.environ.get("NAME") or "HopeSocial Ltd"
+
+        account_number = (setting.account_number if setting and setting.account_number else None) or \
+                         os.environ.get("ACCOUNT_NUMBER") or os.environ.get("NEXT_PUBLIC_ACCOUNT_NUMBER") or os.environ.get("ACCOUNT_NO") or os.environ.get("ACCOUNT_NUM") or "2034829102"
+
+        flutterwave_public_key = (setting.flutterwave_public_key if setting and setting.flutterwave_public_key else None) or \
+                                os.environ.get("FLUTTERWAVE_PUBLIC_KEY") or os.environ.get("NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY") or os.environ.get("FLW_PUBLIC_KEY") or "FLWPUBK_TEST-demo-key"
 
         return Response({
-            "bank_name": bank_name,
-            "account_name": account_name,
-            "account_number": account_number,
-            "flutterwave_public_key": flutterwave_public_key,
+            "bank_name": str(bank_name).strip(),
+            "account_name": str(account_name).strip(),
+            "account_number": str(account_number).strip(),
+            "flutterwave_public_key": str(flutterwave_public_key).strip(),
         })
+
+    def post(self, request):
+        if not (request.user and request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)):
+            return Response({"error": "Admin privileges required"}, status=status.HTTP_403_FORBIDDEN)
+
+        setting, _ = PaymentSetting.objects.get_or_create(id=1)
+
+        if 'bank_name' in request.data:
+            setting.bank_name = str(request.data.get('bank_name', '')).strip()
+        if 'account_name' in request.data:
+            setting.account_name = str(request.data.get('account_name', '')).strip()
+        if 'account_number' in request.data:
+            setting.account_number = str(request.data.get('account_number', '')).strip()
+        if 'flutterwave_public_key' in request.data:
+            setting.flutterwave_public_key = str(request.data.get('flutterwave_public_key', '')).strip()
+        if 'flutterwave_secret_key' in request.data:
+            setting.flutterwave_secret_key = str(request.data.get('flutterwave_secret_key', '')).strip()
+
+        setting.save()
+
+        return Response({
+            "message": "Payment & bank settings updated successfully!",
+            "bank_name": setting.bank_name,
+            "account_name": setting.account_name,
+            "account_number": setting.account_number,
+            "flutterwave_public_key": setting.flutterwave_public_key,
+        })
+
 
 
 
