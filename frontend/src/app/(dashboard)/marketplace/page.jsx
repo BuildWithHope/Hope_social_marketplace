@@ -25,8 +25,9 @@ import {
   PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
 import { services as mockServices, platforms, platformIcons } from "@/data/mock";
-import { placeOrder } from "@/lib/api";
+import { placeOrder, getPaymentConfig } from "@/lib/api";
 import { toast } from "sonner";
+
 
 // Platform Color System & Branding Styles
 const platformStyles = {
@@ -102,6 +103,20 @@ export default function Marketplace() {
 
   // Card Form State
   const [cardForm, setCardForm] = useState({ number: "", expiry: "", cvv: "", name: "" });
+
+  const [paymentConfig, setPaymentConfig] = useState(null);
+
+  useEffect(() => {
+    getPaymentConfig().then((cfg) => {
+      if (cfg) setPaymentConfig(cfg);
+    }).catch(() => null);
+  }, []);
+
+  const bankName = paymentConfig?.bank_name || process.env.NEXT_PUBLIC_BANK_NAME || "Moniepoint / GTBank";
+  const accountName = paymentConfig?.account_name || process.env.NEXT_PUBLIC_ACCOUNT_NAME || "HopeSocial Ltd";
+  const accountNumber = paymentConfig?.account_number || process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || "2034829102";
+  const flwPublicKey = paymentConfig?.flutterwave_public_key || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-demo-key";
+
 
   const filtered = useMemo(() => {
     let s = mockServices.filter((x) =>
@@ -514,24 +529,24 @@ export default function Marketplace() {
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="rounded-lg bg-card p-3 border border-border/40">
                       <div className="text-muted-foreground">Bank Name</div>
-                      <div className="font-bold text-sm text-foreground mt-0.5">Kuda Bank / GTBank</div>
+                      <div className="font-bold text-sm text-foreground mt-0.5">{bankName}</div>
                     </div>
                     <div className="rounded-lg bg-card p-3 border border-border/40">
                       <div className="text-muted-foreground">Account Name</div>
-                      <div className="font-bold text-sm text-foreground mt-0.5">HopeSocial Marketplace Ltd</div>
+                      <div className="font-bold text-sm text-foreground mt-0.5">{accountName}</div>
                     </div>
                   </div>
 
                   <div className="rounded-lg bg-card p-3 border border-border/60 flex items-center justify-between">
                     <div>
                       <div className="text-xs text-muted-foreground">Account Number</div>
-                      <div className="font-bold font-mono text-xl text-emerald-400">2034829102</div>
+                      <div className="font-bold font-mono text-xl text-emerald-400">{accountNumber}</div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       className="gap-1.5 text-xs font-semibold"
-                      onClick={() => copyToClipboard("2034829102", "acc")}
+                      onClick={() => copyToClipboard(accountNumber, "acc")}
                     >
                       {copiedAccount ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                       <span>{copiedAccount ? "Copied!" : "Copy"}</span>
