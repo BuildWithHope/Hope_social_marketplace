@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     ServiceListView, AccountItemListView, OrderListCreateView,
-    TransactionListView, WalletDepositView, FlutterwaveVerifyView, DashboardStatsView,
+    TransactionListView, WalletDepositView, FlutterwaveVerifyView, PaymentConfigView, DashboardStatsView,
     ReferralListView, SupportTicketListCreateView, TicketReplyCreateView,
     AdminOverviewView, AdminUserListView, AdminUserBlockToggleView,
     AdminPendingDepositsView, AdminConfirmDepositView, NotificationListView,
@@ -16,7 +16,9 @@ urlpatterns = [
     path('transactions/', TransactionListView.as_view(), name='transaction-list'),
     path('wallet/deposit/', WalletDepositView.as_view(), name='wallet-deposit'),
     path('wallet/verify-flutterwave/', FlutterwaveVerifyView.as_view(), name='wallet-verify-flutterwave'),
+    path('payment-config/', PaymentConfigView.as_view(), name='payment-config'),
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
+
     path('referrals/', ReferralListView.as_view(), name='referral-list'),
     path('support/tickets/', SupportTicketListCreateView.as_view(), name='ticket-list-create'),
     path('support/tickets/<int:ticket_id>/reply/', TicketReplyCreateView.as_view(), name='ticket-reply-create'),

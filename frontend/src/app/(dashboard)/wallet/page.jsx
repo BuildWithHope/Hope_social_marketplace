@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
-import { depositWallet, verifyFlutterwavePayment, getUserProfile, getDashboardStats, getTransactions } from "@/lib/api";
+import { depositWallet, verifyFlutterwavePayment, getUserProfile, getDashboardStats, getTransactions, getPaymentConfig } from "@/lib/api";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
@@ -17,9 +17,9 @@ import { toast } from "sonner";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 
-const BANK_NAME = process.env.NEXT_PUBLIC_BANK_NAME || "Moniepoint / GTBank";
-const ACCOUNT_NAME = process.env.NEXT_PUBLIC_ACCOUNT_NAME || "HopeSocial Ltd";
-const ACCOUNT_NUMBER = process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || "2034829102";
+const DEFAULT_BANK_NAME = process.env.NEXT_PUBLIC_BANK_NAME || "Moniepoint / GTBank";
+const DEFAULT_ACCOUNT_NAME = process.env.NEXT_PUBLIC_ACCOUNT_NAME || "HopeSocial Ltd";
+const DEFAULT_ACCOUNT_NUMBER = process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || "2034829102";
 
 const methods = [
   { name: "Bank Transfer", desc: "Instant local NGN transfer · 0% fee", icon: Landmark },
@@ -34,6 +34,7 @@ export default function WalletPage() {
   const [stats, setStats] = useState(null);
   const [realTransactions, setRealTransactions] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState(null);
 
   const fetchWalletData = async () => {
     try {
@@ -55,6 +56,31 @@ export default function WalletPage() {
 
   useEffect(() => {
     fetchWalletData();
+    getPaymentConfig().then((cfg) => {
+      if (cfg) setPaymentConfig(cfg);
+    }).catch(() => null);
+
+    // Check if redirected back from Flutterwave Checkout with query params
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const statusParam = params.get("status");
+      const txRef = params.get("tx_ref") || params.get("txref");
+      const transactionId = params.get("transaction_id") || params.get("transactionId");
+
+      if ((statusParam === "successful" || statusParam === "completed" || transactionId) && (txRef || transactionId)) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        toast.info("Verifying Flutterwave deposit redirect...");
+        verifyFlutterwavePayment({
+          transaction_id: transactionId,
+          tx_ref: txRef,
+        }).then((verifyRes) => {
+          toast.success(verifyRes.message || "Payment verified and wallet credited!");
+          fetchWalletData();
+        }).catch((err) => {
+          toast.error(err.message || "Payment verification failed.");
+        });
+      }
+    }
 
     // Dynamically inject Flutterwave Checkout script
     if (typeof window !== "undefined" && !window.FlutterwaveCheckout) {
@@ -81,6 +107,11 @@ export default function WalletPage() {
   const [copiedRef, setCopiedRef] = useState(false);
   const [depositRef, setDepositRef] = useState("");
 
+  const bankName = paymentConfig?.bank_name || DEFAULT_BANK_NAME;
+  const accountName = paymentConfig?.account_name || DEFAULT_ACCOUNT_NAME;
+  const accountNumber = paymentConfig?.account_number || DEFAULT_ACCOUNT_NUMBER;
+  const flwPublicKey = paymentConfig?.flutterwave_public_key || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-demo-key";
+
   const openDepositModal = () => {
     setDepositRef(`DEP-${Math.floor(100000 + Math.random() * 900000)}`);
     setIsDepositModalOpen(true);
@@ -105,7 +136,6 @@ export default function WalletPage() {
       return;
     }
 
-    const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-demo-key";
     const txRef = `FLW-${Date.now()}`;
 
     if (!window.FlutterwaveCheckout) {
@@ -116,11 +146,12 @@ export default function WalletPage() {
     setSubmitting(true);
     try {
       window.FlutterwaveCheckout({
-        public_key: publicKey,
+        public_key: flwPublicKey,
         tx_ref: txRef,
         amount: val,
         currency: "NGN",
         payment_options: "card,banktransfer,ussd",
+        redirect_url: typeof window !== "undefined" ? window.location.href : undefined,
         customer: {
           email: user?.email || "customer@hopesocial.com",
           name: user?.username || "Customer",
@@ -138,6 +169,24 @@ export default function WalletPage() {
               amount: val,
             });
             toast.success(verifyRes.message || `Successfully deposited ₦${val.toLocaleString()} via Flutterwave!`);
+            setIsDepositModalOpen(false);
+            fetchWalletData();
+          } catch (err) {
+            toast.error(err.message || "Payment verification failed.");
+          } finally {
+            setSubmitting(false);
+          }
+        },
+        onclose: () => {
+          setSubmitting(false);
+        },
+      });
+    } catch (err) {
+      setSubmitting(false);
+      toast.error("Could not initialize Flutterwave Checkout.");
+    }
+  };
+
             setIsDepositModalOpen(false);
             fetchWalletData();
           } catch (err) {
@@ -263,11 +312,11 @@ export default function WalletPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg bg-card p-2.5 border border-border/40">
                       <div className="text-muted-foreground text-[10px]">Bank Name</div>
-                      <div className="font-bold text-xs text-foreground mt-0.5">{BANK_NAME}</div>
+                      <div className="font-bold text-xs text-foreground mt-0.5">{bankName}</div>
                     </div>
                     <div className="rounded-lg bg-card p-2.5 border border-border/40">
                       <div className="text-muted-foreground text-[10px]">Account Name</div>
-                      <div className="font-bold text-xs text-foreground mt-0.5">{ACCOUNT_NAME}</div>
+                      <div className="font-bold text-xs text-foreground mt-0.5">{accountName}</div>
                     </div>
                   </div>
 
@@ -275,13 +324,13 @@ export default function WalletPage() {
                   <div className="rounded-lg bg-card p-2.5 border border-border/60 flex items-center justify-between">
                     <div>
                       <div className="text-[10px] text-muted-foreground">Account Number</div>
-                      <div className="font-bold font-mono text-lg text-emerald-400">{ACCOUNT_NUMBER}</div>
+                      <div className="font-bold font-mono text-lg text-emerald-400">{accountNumber}</div>
                     </div>
                     <Button
                       variant="outline"
                       size="xs"
                       className="gap-1 text-xs"
-                      onClick={() => copyText(ACCOUNT_NUMBER, "acc")}
+                      onClick={() => copyText(accountNumber, "acc")}
                     >
                       <span>{copiedAcc ? "Copied!" : "Copy"}</span>
                     </Button>

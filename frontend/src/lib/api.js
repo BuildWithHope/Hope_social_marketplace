@@ -230,3 +230,8 @@ export async function confirmPasswordReset(email, code, new_password) {
     body: JSON.stringify({ email, code, new_password }),
   });
 }
+
+export async function getPaymentConfig() {
+  return fetchApi("/marketplace/payment-config/");
+}
+

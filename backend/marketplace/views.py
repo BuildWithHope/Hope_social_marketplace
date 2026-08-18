@@ -277,6 +277,24 @@ class WalletDepositView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class PaymentConfigView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        bank_name = os.environ.get("BANK_NAME", os.environ.get("NEXT_PUBLIC_BANK_NAME", "Moniepoint / GTBank")).strip()
+        account_name = os.environ.get("ACCOUNT_NAME", os.environ.get("NEXT_PUBLIC_ACCOUNT_NAME", "HopeSocial Ltd")).strip()
+        account_number = os.environ.get("ACCOUNT_NUMBER", os.environ.get("NEXT_PUBLIC_ACCOUNT_NUMBER", "2034829102")).strip()
+        flutterwave_public_key = os.environ.get("FLUTTERWAVE_PUBLIC_KEY", os.environ.get("NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY", "FLWPUBK_TEST-demo-key")).strip()
+
+        return Response({
+            "bank_name": bank_name,
+            "account_name": account_name,
+            "account_number": account_number,
+            "flutterwave_public_key": flutterwave_public_key,
+        })
+
+
+
 class FlutterwaveVerifyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

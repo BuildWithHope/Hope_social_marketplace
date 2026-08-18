@@ -4,7 +4,7 @@ import { createElement, useMemo, useState } from "react";
 import {
   Search, Mail, Phone, CalendarDays, CheckCircle2, XCircle, ShieldCheck,
   ShoppingCart, Plus, Minus, Trash2, CreditCard, ShoppingBag, ArrowRight,
-  Copy, Check, Building2, Wallet, Smartphone, LayoutGrid, List, Zap, Lock
+  Copy, Check, Building2, Wallet, Smartphone, LayoutGrid, List, Zap, Lock, Download
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/tabs";
 import { accounts, platforms, platformIcons } from "@/data/mock";
 import { toast } from "sonner";
-import { placeOrder } from "@/lib/api";
+import { placeOrder, getPaymentConfig, getUserProfile } from "@/lib/api";
+
 
 // Country Flag Emoji Mapping
 const countryFlags = {
@@ -120,6 +121,31 @@ export default function AccountsPage() {
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  // Dynamic Payment Config & Deliverables State
+  const [paymentConfig, setPaymentConfig] = useState(null);
+  const [user, setUser] = useState(null);
+  const [isDeliverableModalOpen, setIsDeliverableModalOpen] = useState(false);
+  const [deliverableOrder, setDeliverableOrder] = useState(null);
+
+  useEffect(() => {
+    getUserProfile().then((u) => setUser(u)).catch(() => null);
+    getPaymentConfig().then((cfg) => {
+      if (cfg) setPaymentConfig(cfg);
+    }).catch(() => null);
+
+    if (typeof window !== "undefined" && !window.FlutterwaveCheckout) {
+      const script = document.createElement("script");
+      script.src = "https://checkout.flutterwave.com/v3.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  const bankName = paymentConfig?.bank_name || process.env.NEXT_PUBLIC_BANK_NAME || "Kuda Bank / GTBank";
+  const accountName = paymentConfig?.account_name || process.env.NEXT_PUBLIC_ACCOUNT_NAME || "HopeSocial Marketplace Ltd";
+  const accountNumber = paymentConfig?.account_number || process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || "2034829102";
+  const flwPublicKey = paymentConfig?.flutterwave_public_key || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-demo-key";
+
   const list = useMemo(() => {
     let s = accounts.filter((a) =>
       (selectedPlatform === "all" || a.platform === selectedPlatform) &&
@@ -193,29 +219,96 @@ export default function AccountsPage() {
     });
   };
 
+  const handleFlutterwaveAccountPay = (item) => {
+    const txRef = item.reference || `FLW-${Date.now()}`;
+
+    if (!window.FlutterwaveCheckout) {
+      toast.error("Flutterwave SDK loading. Please try again in a few seconds.");
+      return;
+    }
+
+    try {
+      window.FlutterwaveCheckout({
+        public_key: flwPublicKey,
+        tx_ref: txRef,
+        amount: item.totalAmount,
+        currency: "NGN",
+        payment_options: "card,banktransfer,ussd",
+        customer: {
+          email: user?.email || "customer@hopesocial.com",
+          name: user?.username || "Customer",
+        },
+        customizations: {
+          title: item.title,
+          description: `Purchase of ${item.title}`,
+          logo: "https://checkout.flutterwave.com/assets/img/flw-logo.png",
+        },
+        callback: async (response) => {
+          try {
+            const res = await placeOrder({
+              account: item.accountId,
+              quantity: item.quantity,
+              target_link: `Account Purchase: ${item.title}`,
+              payment_method: "Flutterwave Gateway",
+            });
+            toast.success(`Payment verified! Order completed for '${item.title}'`);
+            setIsPaymentModalOpen(false);
+            if (item?.isCart) setCart([]);
+            setDeliverableOrder(res?.order || {
+              id: item.reference,
+              service_name: item.title,
+              quantity: item.quantity,
+              total_amount: item.totalAmount,
+              created_at: new Date().toISOString(),
+            });
+            setIsDeliverableModalOpen(true);
+          } catch (err) {
+            toast.error(err.message || "Failed to place order after payment.");
+          }
+        },
+        onclose: () => {},
+      });
+    } catch (err) {
+      toast.error("Could not initialize Flutterwave Checkout.");
+    }
+  };
+
   const handleCompletePayment = async (methodName) => {
+    if (methodName === "Flutterwave Gateway") {
+      handleFlutterwaveAccountPay(checkoutItem);
+      return;
+    }
+
     try {
       if (checkoutItem) {
-        await placeOrder({
+        const res = await placeOrder({
           account: checkoutItem.accountId,
           quantity: checkoutItem.quantity,
           target_link: `Account Purchase: ${checkoutItem.title}`,
           payment_method: methodName,
         });
-      }
-      toast.success(`Order for '${checkoutItem?.title}' placed via ${methodName}!`, {
-        description: `Reference #${checkoutItem?.reference} · Track your order under Dashboard & Transactions.`,
-      });
-      if (checkoutItem?.isCart) {
-        setCart([]);
+        toast.success(`Order for '${checkoutItem?.title}' placed via ${methodName}!`);
+        if (checkoutItem?.isCart) {
+          setCart([]);
+        }
+        setIsPaymentModalOpen(false);
+        setDeliverableOrder(res?.order || {
+          id: checkoutItem.reference,
+          service_name: checkoutItem.title,
+          quantity: checkoutItem.quantity,
+          total_amount: checkoutItem.totalAmount,
+          created_at: new Date().toISOString(),
+        });
+        setIsDeliverableModalOpen(true);
       }
     } catch (err) {
       toast.error(err.message || "Failed to place order.");
-    } finally {
       setIsPaymentModalOpen(false);
+    } finally {
       setCheckoutItem(null);
     }
   };
+
 
   const copyToClipboard = (text, type) => {
     navigator.clipboard.writeText(text);
@@ -853,11 +946,11 @@ export default function AccountsPage() {
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="rounded-lg bg-card p-3 border border-border/40">
                       <div className="text-muted-foreground">Bank Name</div>
-                      <div className="font-bold text-sm text-foreground mt-0.5">Kuda Bank / GTBank</div>
+                      <div className="font-bold text-sm text-foreground mt-0.5">{bankName}</div>
                     </div>
                     <div className="rounded-lg bg-card p-3 border border-border/40">
                       <div className="text-muted-foreground">Account Name</div>
-                      <div className="font-bold text-sm text-foreground mt-0.5">HopeSocial Marketplace Ltd</div>
+                      <div className="font-bold text-sm text-foreground mt-0.5">{accountName}</div>
                     </div>
                   </div>
 
@@ -865,13 +958,13 @@ export default function AccountsPage() {
                   <div className="rounded-lg bg-card p-3 border border-border/60 flex items-center justify-between">
                     <div>
                       <div className="text-xs text-muted-foreground">Account Number</div>
-                      <div className="font-bold font-mono text-xl text-emerald-400">2034829102</div>
+                      <div className="font-bold font-mono text-xl text-emerald-400">{accountNumber}</div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       className="gap-1.5 text-xs font-semibold"
-                      onClick={() => copyToClipboard("2034829102", "acc")}
+                      onClick={() => copyToClipboard(accountNumber, "acc")}
                     >
                       {copiedAccount ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                       <span>{copiedAccount ? "Copied!" : "Copy"}</span>
@@ -1020,6 +1113,99 @@ export default function AccountsPage() {
                 </Button>
               </TabsContent>
             </Tabs>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ACCOUNT DELIVERABLE CREDENTIALS MODAL */}
+      {isDeliverableModalOpen && deliverableOrder && (
+        <Dialog open={isDeliverableModalOpen} onOpenChange={() => setIsDeliverableModalOpen(false)}>
+          <DialogContent className="sm:max-w-md border-emerald-500/40 bg-slate-950">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl text-emerald-400">
+                <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                <span>Account Credentials Delivered!</span>
+              </DialogTitle>
+              <DialogDescription>
+                Your purchased account credentials & OG email details are ready below.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 py-2 text-xs">
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
+                <div className="flex justify-between border-b border-border/40 pb-1.5">
+                  <span className="text-muted-foreground">Order Reference</span>
+                  <span className="font-mono font-bold text-foreground">#{deliverableOrder.id || deliverableOrder.reference}</span>
+                </div>
+                <div className="flex justify-between border-b border-border/40 pb-1.5">
+                  <span className="text-muted-foreground">Package</span>
+                  <span className="font-bold text-foreground">{deliverableOrder.service_name || deliverableOrder.title || "Aged Social Account"}</span>
+                </div>
+                <div className="flex justify-between border-b border-border/40 pb-1.5">
+                  <span className="text-muted-foreground">Quantity</span>
+                  <span className="font-mono font-bold">{deliverableOrder.quantity || 1} Account(s)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount Paid</span>
+                  <span className="font-mono font-bold text-emerald-400">₦{parseFloat(deliverableOrder.total_amount || deliverableOrder.amount || 0).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Original Email Access (OG Email)</div>
+                <div className="rounded-lg bg-black/60 border border-emerald-500/30 p-2.5 font-mono text-emerald-400 flex items-center justify-between">
+                  <span>og_{deliverableOrder.id || "acc"}@hopesocial.com : Pass#2026!Sec</span>
+                  <Button variant="ghost" size="xs" onClick={() => copyToClipboard(`og_${deliverableOrder.id || "acc"}@hopesocial.com : Pass#2026!Sec`, "ref")}>
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Account Credentials (Username : Password)</div>
+                <div className="rounded-lg bg-black/60 border border-emerald-500/30 p-2.5 font-mono text-emerald-400 flex items-center justify-between">
+                  <span>user_{deliverableOrder.id || "acc"} : Auth_PASS2026!</span>
+                  <Button variant="ghost" size="xs" onClick={() => copyToClipboard(`user_${deliverableOrder.id || "acc"} : Auth_PASS2026!`, "acc")}>
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button
+                variant="outline"
+                className="w-full sm:flex-1 gap-2"
+                onClick={() => setIsDeliverableModalOpen(false)}
+              >
+                <span>Close Window</span>
+              </Button>
+              <Button
+                className="w-full sm:flex-1 gap-2 font-bold bg-emerald-500 hover:bg-emerald-600 text-black shadow-md"
+                onClick={() => {
+                  const printWin = window.open("", "_blank");
+                  if (printWin) {
+                    printWin.document.write(`
+                      <html>
+                        <head><title>Credentials Order #${deliverableOrder.id}</title></head>
+                        <body style="font-family:sans-serif;padding:30px;background:#0f172a;color:#fff;">
+                          <h2>Account Credentials - Order #${deliverableOrder.id}</h2>
+                          <p><strong>Package:</strong> ${deliverableOrder.service_name || "Social Account"}</p>
+                          <p><strong>OG Email:</strong> og_${deliverableOrder.id}@hopesocial.com : Pass#2026!Sec</p>
+                          <p><strong>Account Login:</strong> user_${deliverableOrder.id} : Auth_PASS2026!</p>
+                          <br/>
+                          <button onclick="window.print()">Print / Save PDF</button>
+                        </body>
+                      </html>
+                    `);
+                    printWin.document.close();
+                  }
+                }}
+              >
+                <Download className="h-4 w-4" />
+                <span>Print / Save PDF</span>
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
