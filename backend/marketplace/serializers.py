@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply, Notification
+from .models import Provider, Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply, Notification
+
+class ProviderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Provider
+        fields = '__all__'
 
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,7 +22,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'user_username', 'user_email', 'service', 'service_name', 'target_link', 'quantity', 'total_amount', 'status', 'date']
+        fields = ['id', 'user', 'user_username', 'user_email', 'service', 'service_name', 'target_link', 'quantity', 'total_amount', 'status', 'deliverable_info', 'date']
         read_only_fields = ['user', 'date']
 
 class TransactionSerializer(serializers.ModelSerializer):

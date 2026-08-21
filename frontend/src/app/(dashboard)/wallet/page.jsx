@@ -187,24 +187,6 @@ export default function WalletPage() {
     }
   };
 
-            setIsDepositModalOpen(false);
-            fetchWalletData();
-          } catch (err) {
-            toast.error(err.message || "Payment verification failed.");
-          } finally {
-            setSubmitting(false);
-          }
-        },
-        onclose: () => {
-          setSubmitting(false);
-        },
-      });
-    } catch (err) {
-      setSubmitting(false);
-      toast.error("Could not initialize Flutterwave Checkout.");
-    }
-  };
-
   const handleDepositSubmit = async (methodName) => {
     const activeMethod = methodName || selectedMethod;
     if (activeMethod === "Flutterwave") {

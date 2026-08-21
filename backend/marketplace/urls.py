@@ -1,17 +1,19 @@
 from django.urls import path
 from .views import (
-    ServiceListView, AccountItemListView, OrderListCreateView,
+    ServiceListView, ServiceDetailView, AccountItemListView, AccountItemDetailView, OrderListCreateView,
     TransactionListView, WalletDepositView, FlutterwaveVerifyView, PaymentConfigView, DashboardStatsView,
     ReferralListView, SupportTicketListCreateView, TicketReplyCreateView,
     AdminOverviewView, AdminUserListView, AdminUserBlockToggleView,
     AdminPendingDepositsView, AdminConfirmDepositView, NotificationListView,
-    AdminSupportTicketListView, AdminTicketReplyView, AdminOrdersListView
+    AdminSupportTicketListView, AdminTicketReplyView, AdminOrdersListView, ProviderListView
 )
 
 urlpatterns = [
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('services/', ServiceListView.as_view(), name='service-list'),
+    path('services/<int:service_id>/', ServiceDetailView.as_view(), name='service-detail'),
     path('accounts/', AccountItemListView.as_view(), name='account-list'),
+    path('accounts/<int:account_id>/', AccountItemDetailView.as_view(), name='account-detail'),
     path('orders/', OrderListCreateView.as_view(), name='order-list-create'),
     path('transactions/', TransactionListView.as_view(), name='transaction-list'),
     path('wallet/deposit/', WalletDepositView.as_view(), name='wallet-deposit'),
@@ -32,4 +34,5 @@ urlpatterns = [
     path('admin/support/tickets/', AdminSupportTicketListView.as_view(), name='admin-ticket-list'),
     path('admin/support/tickets/<int:ticket_id>/reply/', AdminTicketReplyView.as_view(), name='admin-ticket-reply'),
     path('admin/orders/', AdminOrdersListView.as_view(), name='admin-orders-list'),
+    path('admin/providers/', ProviderListView.as_view(), name='admin-providers'),
 ]

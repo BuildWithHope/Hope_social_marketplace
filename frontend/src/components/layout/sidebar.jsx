@@ -40,7 +40,7 @@ export function AppSidebar({ collapsed, onToggle, onNavigate }) {
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300",
+        "sticky top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300",
         collapsed ? "w-[76px]" : "w-[260px]",
       )}
     >

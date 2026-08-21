@@ -63,6 +63,7 @@ class Order(models.Model):
     quantity = models.IntegerField(default=1000)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    deliverable_info = models.TextField(blank=True, default="", help_text="Account credentials or download link delivered to buyer")
 
     # Supplier API details
     provider_order_id = models.CharField(max_length=100, blank=True, null=True)

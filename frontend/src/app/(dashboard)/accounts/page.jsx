@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useMemo, useState } from "react";
+import { createElement, useMemo, useState, useEffect } from "react";
 import {
   Search, Mail, Phone, CalendarDays, CheckCircle2, XCircle, ShieldCheck,
   ShoppingCart, Plus, Minus, Trash2, CreditCard, ShoppingBag, ArrowRight,
@@ -1082,35 +1082,56 @@ export default function AccountsPage() {
 
               {/* Option 4: Pay with Wallet Balance */}
               <TabsContent value="wallet" className="space-y-4 pt-3">
-                <div className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                        <Wallet className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Available Wallet Balance</div>
-                        <div className="text-xl font-bold font-mono text-emerald-400">₦128,490.00</div>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10">Sufficient Funds</Badge>
-                  </div>
+                {(() => {
+                  const walletBalance = user?.wallet_balance ? parseFloat(user.wallet_balance) : 0;
+                  const isSufficient = walletBalance >= (checkoutItem?.totalAmount || 0);
 
-                  <div className="text-xs text-muted-foreground border-t border-border/40 pt-3 flex justify-between">
-                    <span>Deduction after payment:</span>
-                    <span className="font-bold font-mono text-foreground">
-                      ₦{(128490 - checkoutItem.totalAmount).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
+                  return (
+                    <>
+                      <div className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                              <Wallet className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <div className="text-xs text-muted-foreground">Available Wallet Balance</div>
+                              <div className="text-xl font-bold font-mono text-emerald-400">
+                                ₦{walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={isSufficient ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10" : "border-destructive/40 text-red-400 bg-destructive/10"}
+                          >
+                            {isSufficient ? "Sufficient Funds" : "Insufficient Balance"}
+                          </Badge>
+                        </div>
 
-                <Button
-                  className="w-full font-bold py-5 bg-emerald-500 hover:bg-emerald-600 text-black shadow-md gap-2"
-                  onClick={() => handleCompletePayment("Wallet Balance")}
-                >
-                  <Zap className="h-5 w-5" />
-                  <span>Instant 1-Click Pay (₦{checkoutItem.totalAmount.toLocaleString()})</span>
-                </Button>
+                        <div className="text-xs text-muted-foreground border-t border-border/40 pt-3 flex justify-between">
+                          <span>Deduction after payment:</span>
+                          <span className="font-bold font-mono text-foreground">
+                            ₦{Math.max(0, walletBalance - (checkoutItem?.totalAmount || 0)).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        disabled={!isSufficient}
+                        className={`w-full font-bold py-5 shadow-md gap-2 ${
+                          isSufficient
+                            ? "bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer"
+                            : "bg-muted text-muted-foreground cursor-not-allowed"
+                        }`}
+                        onClick={() => isSufficient && handleCompletePayment("Wallet Balance")}
+                      >
+                        <Zap className="h-5 w-5" />
+                        <span>Instant 1-Click Pay (₦{(checkoutItem?.totalAmount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })})</span>
+                      </Button>
+                    </>
+                  );
+                })()}
               </TabsContent>
             </Tabs>
           </DialogContent>

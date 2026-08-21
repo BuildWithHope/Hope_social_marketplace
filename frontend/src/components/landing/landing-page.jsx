@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import {
-  Sparkles, TrendingUp, Users, Wallet, ShieldCheck, Zap, ArrowRight,
-  CheckCircle2, Lock, Star, ChevronRight, Headphones, BookOpen,
-  Globe, Shield, Smartphone, Landmark, CreditCard, RefreshCw,
+  Sparkles, Zap, ShieldCheck, Lock, RefreshCw, ShoppingBag, ArrowRight,
+  TrendingUp, Building2, Smartphone, Wallet, CheckCircle2, UserCheck, Users,
+  Key, Globe, ExternalLink, ChevronRight, Star
 } from "lucide-react";
+import { HowToOrderGuide } from "@/components/dashboard/how-to-order-guide";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -73,7 +74,7 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary selection:text-black">
       {/* 1. LANDING NAVBAR */}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur px-4 md:px-8 py-3.5">
+      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/95 backdrop-blur-md shadow-sm px-4 md:px-8 py-3.5">
         <div className="mx-auto max-w-7xl flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/30">
@@ -155,6 +156,13 @@ export function LandingPage() {
               <RefreshCw className="h-4 w-4 text-purple-400" /> Auto Refund Protection
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* QUICK ORDER GUIDE SECTION */}
+      <section className="py-12 bg-card/20 border-t border-border/40">
+        <div className="mx-auto max-w-7xl px-4 md:px-8">
+          <HowToOrderGuide />
         </div>
       </section>
 

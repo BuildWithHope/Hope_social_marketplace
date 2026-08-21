@@ -11,8 +11,11 @@ import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 
+import { useAuth } from "@/context/auth-context";
+
 export default function Login() {
   const router = useRouter();
+  const { login: setAuthToken } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,12 +33,12 @@ export default function Login() {
       const data = await loginUser({ username, password });
       toast.success("Logged in successfully!");
       if (data.token) {
-        localStorage.setItem("token", data.token);
+        await setAuthToken(data.token);
       }
       if (data.user?.is_staff || data.user?.is_superuser) {
-        window.location.href = "/admin";
+        router.push("/admin");
       } else {
-        window.location.href = "/";
+        router.push("/");
       }
     } catch (err) {
       toast.error(err.message || "Invalid credentials. Please try again.");

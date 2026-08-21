@@ -232,11 +232,62 @@ export async function confirmPasswordReset(email, code, new_password) {
 }
 
 export async function getPaymentConfig() {
-  return fetchApi("/marketplace/payment-config/");
+  return fetchApi("/payment-config/");
 }
 
 export async function updatePaymentConfig(data) {
-  return fetchApi("/marketplace/payment-config/", {
+  return fetchApi("/payment-config/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function createService(data) {
+  return fetchApi("/services/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateService(id, data) {
+  return fetchApi(`/services/${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteService(id) {
+  return fetchApi(`/services/${id}/`, {
+    method: "DELETE",
+  });
+}
+
+export async function createAccountItem(data) {
+  return fetchApi("/accounts/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAccountItem(id, data) {
+  return fetchApi(`/accounts/${id}/`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAccountItem(id) {
+  return fetchApi(`/accounts/${id}/`, {
+    method: "DELETE",
+  });
+}
+
+export async function getAdminProviders() {
+  return fetchApi("/admin/providers/");
+}
+
+export async function createAdminProvider(data) {
+  return fetchApi("/admin/providers/", {
     method: "POST",
     body: JSON.stringify(data),
   });

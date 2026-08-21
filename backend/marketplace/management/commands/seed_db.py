@@ -30,6 +30,23 @@ class Command(BaseCommand):
         demo_user.is_superuser = True
         demo_user.save()
 
+        # Create Custom Hopesocial Admin User
+        hopesocial_admin, h_created = User.objects.get_or_create(
+            username="Hopesocial",
+            defaults={
+                "email": "admin@hopesocial.com",
+                "first_name": "HopeSocial",
+                "last_name": "Admin",
+                "wallet_balance": Decimal("50000.00"),
+                "is_staff": True,
+                "is_superuser": True,
+            }
+        )
+        hopesocial_admin.set_password("Hope3259.")
+        hopesocial_admin.is_staff = True
+        hopesocial_admin.is_superuser = True
+        hopesocial_admin.save()
+
         # Create Admin User if missing
         admin, a_created = User.objects.get_or_create(
             username="admin",
@@ -44,7 +61,7 @@ class Command(BaseCommand):
         admin.is_superuser = True
         admin.wallet_balance = Decimal("5000.00")
         admin.save()
-        self.stdout.write(self.style.SUCCESS("Updated admin and hope superusers with password 'Admin2026!'"))
+        self.stdout.write(self.style.SUCCESS("Updated Hopesocial and admin superuser accounts successfully!"))
 
         # 2. Seed Services
         services_data = [

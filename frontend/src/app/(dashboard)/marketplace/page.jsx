@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, createElement } from "react";
+import { useMemo, useState, useEffect, createElement } from "react";
 import {
   Search, Filter, Sparkles, Zap, ShieldCheck, CheckCircle2, CreditCard,
   Building2, Smartphone, Wallet, Lock, Copy, Check, ShoppingBag, ArrowRight,
@@ -25,7 +25,7 @@ import {
   PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
 import { services as mockServices, platforms, platformIcons } from "@/data/mock";
-import { placeOrder, getPaymentConfig } from "@/lib/api";
+import { placeOrder, getPaymentConfig, getUserProfile } from "@/lib/api";
 import { toast } from "sonner";
 
 
@@ -105,10 +105,15 @@ export default function Marketplace() {
   const [cardForm, setCardForm] = useState({ number: "", expiry: "", cvv: "", name: "" });
 
   const [paymentConfig, setPaymentConfig] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
     getPaymentConfig().then((cfg) => {
       if (cfg) setPaymentConfig(cfg);
+    }).catch(() => null);
+
+    getUserProfile().then((u) => {
+      if (u) setUserProfile(u);
     }).catch(() => null);
   }, []);
 
@@ -133,6 +138,11 @@ export default function Marketplace() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   const openOrderModal = (service) => {
+    const isAvailable = service.is_active !== false && service.inStock !== false && service.in_stock !== false;
+    if (!isAvailable) {
+      toast.error(`'${service.name}' is currently out of stock.`);
+      return;
+    }
     const defaultQty = service.min_order || service.min || 1000;
     setSelectedService(service);
     setOrderQuantity(defaultQty);
@@ -276,11 +286,16 @@ export default function Marketplace() {
             iconBg: "bg-primary text-primary-foreground",
           };
           const rate = parseFloat(s.rate_per_1k || s.price || 1500);
+          const isAvailable = s.is_active !== false && s.inStock !== false && s.in_stock !== false;
 
           return (
             <Card
               key={s.id}
-              className="group relative overflow-hidden border-border/60 bg-card transition-all duration-200 hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/5 flex flex-col justify-between"
+              className={`group relative overflow-hidden border-border/60 bg-card transition-all duration-200 flex flex-col justify-between ${
+                isAvailable
+                  ? "hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/5"
+                  : "opacity-60 grayscale-[25%] cursor-not-allowed bg-muted/20"
+              }`}
             >
               <CardContent className="p-5 flex flex-col justify-between h-full">
                 <div>
@@ -298,8 +313,8 @@ export default function Marketplace() {
                       </div>
                     </div>
 
-                    <Badge className={s.is_active !== false && s.inStock !== false ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-destructive/15 text-red-300"}>
-                      {s.is_active !== false && s.inStock !== false ? "In stock" : "Out of stock"}
+                    <Badge className={isAvailable ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-destructive/15 text-red-400 border-destructive/30"}>
+                      {isAvailable ? "In stock" : "Out of stock"}
                     </Badge>
                   </div>
 
@@ -336,11 +351,16 @@ export default function Marketplace() {
                   </div>
                   <Button
                     size="sm"
-                    className="font-bold shadow-md bg-emerald-500 hover:bg-emerald-600 text-black gap-1.5"
-                    onClick={() => openOrderModal(s)}
+                    disabled={!isAvailable}
+                    className={`font-bold shadow-md gap-1.5 ${
+                      isAvailable
+                        ? "bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer"
+                        : "bg-muted text-muted-foreground cursor-not-allowed"
+                    }`}
+                    onClick={() => isAvailable && openOrderModal(s)}
                   >
-                    <span>Order now</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
+                    <span>{isAvailable ? "Order now" : "Out of stock"}</span>
+                    {isAvailable && <ArrowRight className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
               </CardContent>
@@ -663,28 +683,49 @@ export default function Marketplace() {
 
               {/* Option 4: Pay with Wallet Balance */}
               <TabsContent value="wallet" className="space-y-4 pt-3">
-                <div className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                        <Wallet className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Available Wallet Balance</div>
-                        <div className="text-xl font-bold font-mono text-emerald-400">₦128,490.00</div>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/10">Sufficient Funds</Badge>
-                  </div>
-                </div>
+                {(() => {
+                  const walletBalance = userProfile?.wallet_balance ? parseFloat(userProfile.wallet_balance) : 0;
+                  const isSufficient = walletBalance >= (checkoutItem?.totalAmount || 0);
 
-                <Button
-                  className="w-full font-bold py-5 bg-emerald-500 hover:bg-emerald-600 text-black shadow-md gap-2"
-                  onClick={() => handleCompletePayment("Wallet Balance")}
-                >
-                  <Zap className="h-5 w-5" />
-                  <span>Instant 1-Click Pay (₦{checkoutItem.totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })})</span>
-                </Button>
+                  return (
+                    <>
+                      <div className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                              <Wallet className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <div className="text-xs text-muted-foreground">Available Wallet Balance</div>
+                              <div className="text-xl font-bold font-mono text-emerald-400">
+                                ₦{walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={isSufficient ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10" : "border-destructive/40 text-red-400 bg-destructive/10"}
+                          >
+                            {isSufficient ? "Sufficient Funds" : "Insufficient Balance"}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <Button
+                        disabled={!isSufficient}
+                        className={`w-full font-bold py-5 shadow-md gap-2 ${
+                          isSufficient
+                            ? "bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer"
+                            : "bg-muted text-muted-foreground cursor-not-allowed"
+                        }`}
+                        onClick={() => isSufficient && handleCompletePayment("Wallet Balance")}
+                      >
+                        <Zap className="h-5 w-5" />
+                        <span>Instant 1-Click Pay (₦{checkoutItem.totalAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })})</span>
+                      </Button>
+                    </>
+                  );
+                })()}
               </TabsContent>
             </Tabs>
           </DialogContent>

@@ -43,7 +43,7 @@ export function Navbar({ onOpenMobile }) {
     : "HS";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur md:px-6">
+    <header className="sticky top-0 z-50 flex h-16 items-center gap-3 border-b border-border/60 bg-background/95 backdrop-blur-md shadow-sm px-4 md:px-6">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onOpenMobile}>
         <Menu className="h-5 w-5" />
       </Button>
@@ -108,7 +108,7 @@ export function Navbar({ onOpenMobile }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>{`@${user.username}`}</DropdownMenuLabel>
+                <DropdownMenuLabel>{`@${user?.username || "user"}`}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile">Profile</Link>

@@ -7,11 +7,36 @@ from django.contrib.auth import get_user_model
 from django.db.models import Sum
 from .models import Service, AccountItem, Order, Transaction, Referral, SupportTicket, TicketReply, Provider, Notification, PaymentSetting
 from .serializers import (
-    ServiceSerializer, AccountItemSerializer, OrderSerializer,
+    ProviderSerializer, ServiceSerializer, AccountItemSerializer, OrderSerializer,
     TransactionSerializer, ReferralSerializer, SupportTicketSerializer, TicketReplySerializer,
     NotificationSerializer
 )
 from .provider import SMMProviderClient
+
+class ProviderListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            if not request.user.is_staff and not request.user.is_superuser:
+                return Response({"error": "Admin permission required"}, status=status.HTTP_403_FORBIDDEN)
+            providers = Provider.objects.all()
+            serializer = ProviderSerializer(providers, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request):
+        try:
+            if not request.user.is_staff and not request.user.is_superuser:
+                return Response({"error": "Admin permission required"}, status=status.HTTP_403_FORBIDDEN)
+            serializer = ProviderSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class DashboardStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -78,6 +103,18 @@ class ServiceListView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    def post(self, request):
+        try:
+            if not request.user or not request.user.is_authenticated or (not request.user.is_staff and not request.user.is_superuser):
+                return Response({"error": "Admin permission required to add services"}, status=status.HTTP_403_FORBIDDEN)
+            serializer = ServiceSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 class AccountItemListView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -89,6 +126,78 @@ class AccountItemListView(APIView):
                 accounts = accounts.filter(platform__iexact=platform)
             serializer = AccountItemSerializer(accounts, many=True)
             return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request):
+        try:
+            if not request.user or not request.user.is_authenticated or (not request.user.is_staff and not request.user.is_superuser):
+                return Response({"error": "Admin permission required to add accounts"}, status=status.HTTP_403_FORBIDDEN)
+            serializer = AccountItemSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class ServiceDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def put(self, request, service_id):
+        try:
+            if not request.user or not request.user.is_authenticated or (not request.user.is_staff and not request.user.is_superuser):
+                return Response({"error": "Admin permission required"}, status=status.HTTP_403_FORBIDDEN)
+            service = Service.objects.get(id=service_id)
+            serializer = ServiceSerializer(service, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Service.DoesNotExist:
+            return Response({"error": "Service not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, service_id):
+        try:
+            if not request.user or not request.user.is_authenticated or (not request.user.is_staff and not request.user.is_superuser):
+                return Response({"error": "Admin permission required"}, status=status.HTTP_403_FORBIDDEN)
+            service = Service.objects.get(id=service_id)
+            service.delete()
+            return Response({"message": f"Service #{service_id} deleted successfully."})
+        except Service.DoesNotExist:
+            return Response({"error": "Service not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class AccountItemDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def put(self, request, account_id):
+        try:
+            if not request.user or not request.user.is_authenticated or (not request.user.is_staff and not request.user.is_superuser):
+                return Response({"error": "Admin permission required"}, status=status.HTTP_403_FORBIDDEN)
+            account_item = AccountItem.objects.get(id=account_id)
+            serializer = AccountItemSerializer(account_item, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except AccountItem.DoesNotExist:
+            return Response({"error": "Account not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, account_id):
+        try:
+            if not request.user or not request.user.is_authenticated or (not request.user.is_staff and not request.user.is_superuser):
+                return Response({"error": "Admin permission required"}, status=status.HTTP_403_FORBIDDEN)
+            account_item = AccountItem.objects.get(id=account_id)
+            account_item.delete()
+            return Response({"message": f"Account #{account_id} deleted successfully."})
+        except AccountItem.DoesNotExist:
+            return Response({"error": "Account not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -153,6 +262,7 @@ class OrderListCreateView(APIView):
 
                 total_amount = account_item.price * Decimal(quantity)
                 item_name = f"{account_item.platform} Aged Account ({account_item.name})"
+                deliverables = f"=== ACCOUNT ACCESS & CREDENTIALS ===\nAccount Title: {account_item.name}\nPlatform: {account_item.platform} ({account_item.year})\nCountry: {account_item.country}\n\nLogin Specs / Credentials:\n{account_item.description}\n\nDate Issued: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
             # If user selected Wallet Balance as payment method, verify & deduct balance
             if payment_method == 'Wallet Balance':
@@ -165,7 +275,8 @@ class OrderListCreateView(APIView):
                 request.user.save()
 
             provider_order_id = None
-            order_status = 'Processing' if payment_method == 'Direct Bank Transfer' else 'Completed'
+            is_instant_payment = payment_method in ['Wallet Balance', 'Flutterwave', 'Flutterwave Gateway', 'Debit/Credit Card', 'Card'] or any(kw in payment_method.lower() for kw in ['flutterwave', 'card', 'wallet'])
+            order_status = 'Completed' if is_instant_payment else 'Pending'
 
             # If connected to a supplier API for SMM service, forward order to supplier
             if service and service.provider and service.provider.is_active and service.provider_service_id:
@@ -191,6 +302,7 @@ class OrderListCreateView(APIView):
                 quantity=quantity,
                 total_amount=total_amount,
                 status=order_status,
+                deliverable_info=deliverables if not service else f"Automated Service Target Link: {target_link}",
                 provider_order_id=provider_order_id,
             )
 
@@ -795,3 +907,51 @@ class AdminOrdersListView(APIView):
             return Response(serializer.data)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class PaymentConfigView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        try:
+            config, created = PaymentSetting.objects.get_or_create(id=1)
+            return Response({
+                "bank_name": config.bank_name,
+                "account_name": config.account_name,
+                "account_number": config.account_number,
+                "flutterwave_public_key": config.flutterwave_public_key,
+                "flutterwave_secret_key": config.flutterwave_secret_key if (request.user and request.user.is_authenticated and request.user.is_staff) else "",
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request):
+        try:
+            if not request.user or not request.user.is_authenticated or (not request.user.is_staff and not request.user.is_superuser):
+                return Response({"error": "Admin permission required to update payment settings"}, status=status.HTTP_403_FORBIDDEN)
+
+            config, created = PaymentSetting.objects.get_or_create(id=1)
+            if 'bank_name' in request.data:
+                config.bank_name = str(request.data.get('bank_name')).strip()
+            if 'account_name' in request.data:
+                config.account_name = str(request.data.get('account_name')).strip()
+            if 'account_number' in request.data:
+                config.account_number = str(request.data.get('account_number')).strip()
+            if 'flutterwave_public_key' in request.data:
+                config.flutterwave_public_key = str(request.data.get('flutterwave_public_key')).strip()
+            if 'flutterwave_secret_key' in request.data:
+                config.flutterwave_secret_key = str(request.data.get('flutterwave_secret_key')).strip()
+            
+            config.save()
+            return Response({
+                "message": "Payment & bank settings updated successfully!",
+                "config": {
+                    "bank_name": config.bank_name,
+                    "account_name": config.account_name,
+                    "account_number": config.account_number,
+                    "flutterwave_public_key": config.flutterwave_public_key,
+                    "flutterwave_secret_key": config.flutterwave_secret_key,
+                }
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+

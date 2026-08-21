@@ -6,7 +6,7 @@ import {
   ShieldAlert, Users, Wallet, CheckCircle2, XCircle, AlertTriangle,
   Search, RefreshCw, UserCheck, UserX, CreditCard, Shield,
   ArrowUpRight, Lock, Unlock, Clock, DollarSign, Activity, MessageSquare, Send,
-  ShoppingBag, Download
+  ShoppingBag, Download, Plus, Trash2, Edit3, Package
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -26,7 +26,10 @@ import {
   getAdminOverview, getAdminUsers, toggleUserBlock,
   getAdminDeposits, confirmAdminDeposit, getUserProfile,
   getAdminSupportTickets, replyAdminSupportTicket, getAdminOrders,
-  getPaymentConfig, updatePaymentConfig
+  getPaymentConfig, updatePaymentConfig,
+  getServices, getAccounts, createService, deleteService,
+  createAccountItem, deleteAccountItem,
+  getAdminProviders, createAdminProvider
 } from "@/lib/api";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 
@@ -106,8 +109,42 @@ export default function AdminDashboardPage() {
     account_name: "",
     account_number: "",
     flutterwave_public_key: "",
+    flutterwave_secret_key: "",
   });
   const [savingBankConfig, setSavingBankConfig] = useState(false);
+
+  const [servicesList, setServicesList] = useState([]);
+  const [accountsList, setAccountsList] = useState([]);
+  const [providersList, setProvidersList] = useState([]);
+
+  const [newServiceForm, setNewServiceForm] = useState({
+    platform: "Instagram",
+    category: "Followers",
+    name: "",
+    rate_per_1k: "1500.00",
+    badge: "Popular",
+    description: "",
+  });
+
+  const [newAccountForm, setNewAccountForm] = useState({
+    platform: "Instagram",
+    category: "Verified Account",
+    name: "",
+    followers: "10,000",
+    year: 2022,
+    flag: "USA 🇺🇸",
+    price: "25000.00",
+    badge: "OG Email Included",
+    description: "2FA active with full email login credentials.",
+  });
+
+  const [newProviderForm, setNewProviderForm] = useState({
+    name: "",
+    api_url: "https://provider.com/api/v2",
+    api_key: "",
+    margin_percentage: "30.00",
+    is_active: true,
+  });
 
   const loadData = async () => {
     setLoading(true);
@@ -116,25 +153,32 @@ export default function AdminDashboardPage() {
       setCurrentUser(profile);
 
       if (profile && (profile.is_staff || profile.is_superuser)) {
-        const [ov, us, dp, tk, ords, pCfg] = await Promise.all([
+        const [ov, us, dp, tk, ords, pCfg, svcs, accs, provs] = await Promise.all([
           getAdminOverview().catch(() => null),
           getAdminUsers().catch(() => []),
           getAdminDeposits().catch(() => []),
           getAdminSupportTickets().catch(() => []),
           getAdminOrders().catch(() => []),
           getPaymentConfig().catch(() => null),
+          getServices().catch(() => []),
+          getAccounts().catch(() => []),
+          getAdminProviders().catch(() => []),
         ]);
         setOverview(ov);
         setUsers(us || []);
         setDeposits(dp || []);
         setAdminTickets(tk || []);
         setAdminOrders(ords || []);
+        setServicesList(svcs || []);
+        setAccountsList(accs || []);
+        setProvidersList(provs || []);
         if (pCfg) {
           setBankConfigForm({
             bank_name: pCfg.bank_name || "",
             account_name: pCfg.account_name || "",
             account_number: pCfg.account_number || "",
             flutterwave_public_key: pCfg.flutterwave_public_key || "",
+            flutterwave_secret_key: pCfg.flutterwave_secret_key || "",
           });
         }
       }
@@ -142,6 +186,99 @@ export default function AdminDashboardPage() {
       toast.error("Failed to load admin telemetry data.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateProvider = async (e) => {
+    e.preventDefault();
+    if (!newProviderForm.name.trim() || !newProviderForm.api_key.trim()) {
+      toast.error("Provider Name and API Key are required.");
+      return;
+    }
+    try {
+      await createAdminProvider(newProviderForm);
+      toast.success(`Supplier Provider '${newProviderForm.name}' configured with ${newProviderForm.margin_percentage}% profit margin!`);
+      setNewProviderForm({
+        name: "",
+        api_url: "https://provider.com/api/v2",
+        api_key: "",
+        margin_percentage: "30.00",
+        is_active: true,
+      });
+      loadData();
+    } catch (err) {
+      toast.error(err.message || "Failed to save supplier provider.");
+    }
+  };
+
+  const handleCreateService = async (e) => {
+    e.preventDefault();
+    if (!newServiceForm.name.trim()) {
+      toast.error("Service name is required.");
+      return;
+    }
+    try {
+      await createService(newServiceForm);
+      toast.success(`Service '${newServiceForm.name}' added successfully!`);
+      setNewServiceForm({
+        platform: "Instagram",
+        category: "Followers",
+        name: "",
+        rate_per_1k: "1500.00",
+        badge: "Popular",
+        description: "",
+      });
+      loadData();
+    } catch (err) {
+      toast.error(err.message || "Failed to create service.");
+    }
+  };
+
+  const handleDeleteService = async (id, name) => {
+    if (!confirm(`Are you sure you want to delete service '${name}'?`)) return;
+    try {
+      await deleteService(id);
+      toast.success(`Service '${name}' deleted successfully.`);
+      setServicesList((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      toast.error(err.message || "Failed to delete service.");
+    }
+  };
+
+  const handleCreateAccount = async (e) => {
+    e.preventDefault();
+    if (!newAccountForm.name.trim()) {
+      toast.error("Account title is required.");
+      return;
+    }
+    try {
+      await createAccountItem(newAccountForm);
+      toast.success(`Account '${newAccountForm.name}' added to inventory!`);
+      setNewAccountForm({
+        platform: "Instagram",
+        category: "Verified Account",
+        name: "",
+        followers: "10,000",
+        year: 2022,
+        flag: "USA 🇺🇸",
+        price: "25000.00",
+        badge: "OG Email Included",
+        description: "2FA active with full email login credentials.",
+      });
+      loadData();
+    } catch (err) {
+      toast.error(err.message || "Failed to add account item.");
+    }
+  };
+
+  const handleDeleteAccount = async (id, name) => {
+    if (!confirm(`Are you sure you want to delete account listing '${name}'?`)) return;
+    try {
+      await deleteAccountItem(id);
+      toast.success(`Account '${name}' deleted successfully.`);
+      setAccountsList((prev) => prev.filter((a) => a.id !== id));
+    } catch (err) {
+      toast.error(err.message || "Failed to delete account listing.");
     }
   };
 
@@ -335,19 +472,120 @@ export default function AdminDashboardPage() {
         />
       </div>
 
+      {/* PROMINENT LIVE BANK & PAYMENT SETTINGS SECTION */}
+      <Card className="border-2 border-emerald-500/50 bg-slate-950/90 shadow-2xl">
+        <CardHeader className="border-b border-emerald-500/20 bg-emerald-500/5 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base md:text-lg font-extrabold text-foreground flex items-center gap-2">
+                  <span>Live Bank Account & Payment Gateway Settings</span>
+                  <Badge className="bg-emerald-500/20 text-emerald-400 text-[10px] border-emerald-500/30 font-mono">
+                    LIVE CONFIG
+                  </Badge>
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                  Set your bank name, account number, and account name below. These details will be displayed to all customers when funding their wallets or making direct bank transfers.
+                </CardDescription>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-5">
+          <form onSubmit={handleSaveBankConfig} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-200">Bank Name</label>
+              <Input
+                placeholder="e.g. Moniepoint / GTBank / Kuda"
+                value={bankConfigForm.bank_name}
+                onChange={(e) => setBankConfigForm({ ...bankConfigForm, bank_name: e.target.value })}
+                className="bg-slate-900 border-slate-700 text-xs font-semibold text-foreground focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-200">Account Name</label>
+              <Input
+                placeholder="e.g. HopeSocial Ltd"
+                value={bankConfigForm.account_name}
+                onChange={(e) => setBankConfigForm({ ...bankConfigForm, account_name: e.target.value })}
+                className="bg-slate-900 border-slate-700 text-xs font-semibold text-foreground focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-200">Account Number</label>
+              <Input
+                placeholder="e.g. 2034829102"
+                value={bankConfigForm.account_number}
+                onChange={(e) => setBankConfigForm({ ...bankConfigForm, account_number: e.target.value })}
+                className="bg-slate-900 border-slate-700 text-xs font-mono font-bold text-emerald-400 focus:border-emerald-500 tracking-wider"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-200">Flutterwave Public Key</label>
+              <Input
+                placeholder="FLWPUBK_LIVE-..."
+                value={bankConfigForm.flutterwave_public_key}
+                onChange={(e) => setBankConfigForm({ ...bankConfigForm, flutterwave_public_key: e.target.value })}
+                className="bg-slate-900 border-slate-700 text-xs font-mono text-foreground focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-200">Flutterwave Secret Key</label>
+              <Input
+                type="password"
+                placeholder="FLWSECK_LIVE-..."
+                value={bankConfigForm.flutterwave_secret_key}
+                onChange={(e) => setBankConfigForm({ ...bankConfigForm, flutterwave_secret_key: e.target.value })}
+                className="bg-slate-900 border-slate-700 text-xs font-mono text-foreground focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="sm:col-span-2 lg:col-span-4 flex justify-end pt-2">
+              <Button
+                type="submit"
+                disabled={savingBankConfig}
+                className="bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold gap-2 text-xs shadow-lg shadow-emerald-500/20 py-2.5 px-5"
+              >
+                {savingBankConfig ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                <span>Save & Publish Live Payment Details</span>
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
       {/* Main Admin Portal Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-        <TabsList className="grid w-full grid-cols-6 max-w-4xl bg-muted/50 p-1 rounded-xl">
-          <TabsTrigger value="overview" className="text-xs font-semibold flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 max-w-full bg-muted/50 p-1 rounded-xl gap-1">
+          <TabsTrigger value="overview" className="text-xs font-semibold flex items-center gap-1.5">
             <Activity className="h-3.5 w-3.5" /> Overview
           </TabsTrigger>
-          <TabsTrigger value="orders" className="text-xs font-semibold flex items-center gap-2">
-            <ShoppingBag className="h-3.5 w-3.5" /> All Orders ({adminOrders.length})
+          <TabsTrigger value="manage-services" className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+            <Package className="h-3.5 w-3.5" /> Services ({servicesList.length})
           </TabsTrigger>
-          <TabsTrigger value="users" className="text-xs font-semibold flex items-center gap-2">
+          <TabsTrigger value="manage-accounts" className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+            <Shield className="h-3.5 w-3.5" /> Accounts ({accountsList.length})
+          </TabsTrigger>
+          <TabsTrigger value="supplier-apis" className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" /> Supplier APIs
+          </TabsTrigger>
+          <TabsTrigger value="bank-settings" className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+            <CreditCard className="h-3.5 w-3.5" /> Bank Settings
+          </TabsTrigger>
+          <TabsTrigger value="orders" className="text-xs font-semibold flex items-center gap-1.5">
+            <ShoppingBag className="h-3.5 w-3.5" /> Orders ({adminOrders.length})
+          </TabsTrigger>
+          <TabsTrigger value="users" className="text-xs font-semibold flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5" /> Users ({users.length})
           </TabsTrigger>
-          <TabsTrigger value="payments" className="text-xs font-semibold flex items-center gap-2 relative">
+          <TabsTrigger value="payments" className="text-xs font-semibold flex items-center gap-1.5 relative">
             <CreditCard className="h-3.5 w-3.5" /> Payments
             {pendingDepositsCount > 0 && (
               <span className="ml-1 rounded-full bg-destructive text-destructive-foreground px-1.5 py-0.2 text-[10px] font-bold">
@@ -355,16 +593,13 @@ export default function AdminDashboardPage() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="tickets" className="text-xs font-semibold flex items-center gap-2 relative">
+          <TabsTrigger value="tickets" className="text-xs font-semibold flex items-center gap-1.5 relative">
             <MessageSquare className="h-3.5 w-3.5" /> Support
             {openTicketsCount > 0 && (
               <span className="ml-1 rounded-full bg-amber-500 text-black px-1.5 py-0.2 text-[10px] font-bold">
                 {openTicketsCount}
               </span>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="alerts" className="text-xs font-semibold flex items-center gap-2">
-            <ShieldAlert className="h-3.5 w-3.5" /> Alerts Feed
           </TabsTrigger>
         </TabsList>
 
@@ -539,6 +774,508 @@ export default function AdminDashboardPage() {
           </Card>
         </TabsContent>
 
+        {/* MANAGE SMM SERVICES TAB */}
+        <TabsContent value="manage-services" className="space-y-6">
+          {/* Add New Service Form Card */}
+          <Card className="border-emerald-500/40 bg-card shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-emerald-400">
+                <Plus className="h-4 w-4" /> Add New Social Media Service
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Create new automated growth services (Followers, Likes, Views). New services appear immediately in your Social Marketplace.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateService} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Platform</label>
+                  <select
+                    value={newServiceForm.platform}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, platform: e.target.value })}
+                    className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-xs text-foreground focus:border-emerald-500"
+                  >
+                    <option value="Instagram">Instagram</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Telegram">Telegram</option>
+                    <option value="Twitter">Twitter / X</option>
+                    <option value="Facebook">Facebook</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Category</label>
+                  <select
+                    value={newServiceForm.category}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, category: e.target.value })}
+                    className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-xs text-foreground focus:border-emerald-500"
+                  >
+                    <option value="Followers">Followers</option>
+                    <option value="Likes">Likes</option>
+                    <option value="Views">Views</option>
+                    <option value="Comments">Comments</option>
+                    <option value="Subscribers">Subscribers</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Service Name</label>
+                  <Input
+                    placeholder="e.g. Instagram Followers — High Quality"
+                    value={newServiceForm.name}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, name: e.target.value })}
+                    className="bg-slate-900 text-xs font-semibold"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Rate Per 1,000 Items (₦)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="1500.00"
+                    value={newServiceForm.rate_per_1k}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, rate_per_1k: e.target.value })}
+                    className="bg-slate-900 text-xs font-mono font-bold text-emerald-400"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Badge Tag</label>
+                  <Input
+                    placeholder="e.g. Popular, Best, Fast, Instant"
+                    value={newServiceForm.badge}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, badge: e.target.value })}
+                    className="bg-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Description</label>
+                  <Input
+                    placeholder="e.g. High retention profiles, start 0-1h"
+                    value={newServiceForm.description}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, description: e.target.value })}
+                    className="bg-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 lg:col-span-3 flex justify-end pt-2">
+                  <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs gap-1.5 shadow-md">
+                    <Plus className="h-4 w-4" /> Add Service to Marketplace
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Active Services List Table */}
+          <Card className="border-border/60 bg-card">
+            <CardHeader className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">Active Services Inventory ({servicesList.length})</CardTitle>
+                <CardDescription className="text-xs">Manage or delete services. Deleting an item removes it from user view immediately.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Platform</TableHead>
+                      <TableHead>Service Name</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Rate / 1k</TableHead>
+                      <TableHead>Badge</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {servicesList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-6 text-xs text-muted-foreground">
+                          No services found in database. Add your first service above!
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      servicesList.map((svc) => (
+                        <TableRow key={svc.id}>
+                          <TableCell className="font-bold text-xs">{svc.platform}</TableCell>
+                          <TableCell className="font-semibold text-xs text-foreground">{svc.name}</TableCell>
+                          <TableCell><Badge variant="secondary" className="text-[10px]">{svc.category}</Badge></TableCell>
+                          <TableCell className="font-mono text-xs font-bold text-emerald-400">₦{parseFloat(svc.rate_per_1k || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell><Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">{svc.badge || "Standard"}</Badge></TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="destructive"
+                              size="xs"
+                              onClick={() => handleDeleteService(svc.id, svc.name)}
+                              className="cursor-pointer gap-1 text-[11px]"
+                            >
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* MANAGE AGED ACCOUNTS TAB */}
+        <TabsContent value="manage-accounts" className="space-y-6">
+          {/* Add New Account Form Card */}
+          <Card className="border-cyan-500/40 bg-card shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-cyan-400">
+                <Plus className="h-4 w-4" /> Add Aged Account to Inventory
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Add verified aged accounts (Instagram, Twitter, TikTok) for instant customer purchase and credential download.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateAccount} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Platform</label>
+                  <select
+                    value={newAccountForm.platform}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, platform: e.target.value })}
+                    className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-xs text-foreground focus:border-cyan-500"
+                  >
+                    <option value="Instagram">Instagram</option>
+                    <option value="Twitter">Twitter / X</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Facebook">Facebook</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Account Title / Handle</label>
+                  <Input
+                    placeholder="e.g. Instagram Aged Account (2020)"
+                    value={newAccountForm.name}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, name: e.target.value })}
+                    className="bg-slate-900 text-xs font-semibold"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Followers Count</label>
+                  <Input
+                    placeholder="e.g. 12,500 Followers"
+                    value={newAccountForm.followers}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, followers: e.target.value })}
+                    className="bg-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Year Created</label>
+                  <Input
+                    type="number"
+                    placeholder="2020"
+                    value={newAccountForm.year}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, year: parseInt(e.target.value) || 2022 })}
+                    className="bg-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Country Flag</label>
+                  <select
+                    value={newAccountForm.flag}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, flag: e.target.value })}
+                    className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-xs text-foreground focus:border-cyan-500"
+                  >
+                    <option value="USA 🇺🇸">USA 🇺🇸</option>
+                    <option value="UK 🇬🇧">UK 🇬🇧</option>
+                    <option value="Nigeria 🇳🇬">Nigeria 🇳🇬</option>
+                    <option value="Europe 🇪🇺">Europe 🇪🇺</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Price (₦)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="25000.00"
+                    value={newAccountForm.price}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, price: e.target.value })}
+                    className="bg-slate-900 text-xs font-mono font-bold text-cyan-400"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Badge Tag</label>
+                  <Input
+                    placeholder="e.g. OG Email Included, Verified, 2FA Attached"
+                    value={newAccountForm.badge}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, badge: e.target.value })}
+                    className="bg-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Account Deliverable Specs / Credentials</label>
+                  <Input
+                    placeholder="e.g. username: ig_pro_2020 | pass: secretPass | email: og@mail.com"
+                    value={newAccountForm.description}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, description: e.target.value })}
+                    className="bg-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 lg:col-span-3 flex justify-end pt-2">
+                  <Button type="submit" className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold text-xs gap-1.5 shadow-md">
+                    <Plus className="h-4 w-4" /> Add Aged Account to Directory
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Active Aged Accounts List Table */}
+          <Card className="border-border/60 bg-card">
+            <CardHeader className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">Aged Accounts Inventory ({accountsList.length})</CardTitle>
+                <CardDescription className="text-xs">Manage active account listings. Deleting an account removes it from public sale.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Platform</TableHead>
+                      <TableHead>Account Name</TableHead>
+                      <TableHead>Followers / Year</TableHead>
+                      <TableHead>Country</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {accountsList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-6 text-xs text-muted-foreground">
+                          No aged accounts in inventory. Add your first account item above!
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      accountsList.map((acc) => (
+                        <TableRow key={acc.id}>
+                          <TableCell className="font-bold text-xs">{acc.platform}</TableCell>
+                          <TableCell className="font-semibold text-xs text-foreground">{acc.name}</TableCell>
+                          <TableCell className="text-xs">{acc.followers} · ({acc.year})</TableCell>
+                          <TableCell className="text-xs">{acc.flag}</TableCell>
+                          <TableCell className="font-mono text-xs font-bold text-cyan-400">₦{parseFloat(acc.price || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="destructive"
+                              size="xs"
+                              onClick={() => handleDeleteAccount(acc.id, acc.name)}
+                              className="cursor-pointer gap-1 text-[11px]"
+                            >
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* SUPPLIER APIS & PROFIT MARGINS TAB */}
+        <TabsContent value="supplier-apis" className="space-y-6">
+          <Card className="border-amber-500/40 bg-card shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-amber-400">
+                <RefreshCw className="h-4 w-4" /> Add External Supplier API & Set Profit Margin Markup
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Connect external SMM provider APIs (JAP, Peakerr, Secsers, SMMFollows) and set your automated percentage profit margin markup.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateProvider} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Supplier Provider Name</label>
+                  <Input
+                    placeholder="e.g. JustAnotherPanel / Peakerr"
+                    value={newProviderForm.name}
+                    onChange={(e) => setNewProviderForm({ ...newProviderForm, name: e.target.value })}
+                    className="bg-slate-900 text-xs font-semibold"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">API v2 Endpoint URL</label>
+                  <Input
+                    placeholder="https://provider.com/api/v2"
+                    value={newProviderForm.api_url}
+                    onChange={(e) => setNewProviderForm({ ...newProviderForm, api_url: e.target.value })}
+                    className="bg-slate-900 text-xs font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">API Key</label>
+                  <Input
+                    type="password"
+                    placeholder="Supplier Secret API Key"
+                    value={newProviderForm.api_key}
+                    onChange={(e) => setNewProviderForm({ ...newProviderForm, api_key: e.target.value })}
+                    className="bg-slate-900 text-xs font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-amber-400">Profit Margin Markup (%)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="30.00"
+                    value={newProviderForm.margin_percentage}
+                    onChange={(e) => setNewProviderForm({ ...newProviderForm, margin_percentage: e.target.value })}
+                    className="bg-slate-900 text-xs font-mono font-bold text-amber-400 focus:border-amber-500"
+                  />
+                  <p className="text-[10px] text-muted-foreground">e.g. 40.00 adds a 40% automated profit margin to supplier prices.</p>
+                </div>
+
+                <div className="sm:col-span-2 lg:col-span-4 flex justify-end pt-2 border-t border-border/40">
+                  <Button type="submit" className="bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs gap-1.5 shadow-md">
+                    <Plus className="h-4 w-4" /> Save Supplier API & Profit Margin
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Configured Supplier APIs Table */}
+          <Card className="border-border/60 bg-card">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">Configured Supplier API Integrations ({providersList.length})</CardTitle>
+              <CardDescription className="text-xs">Connected providers available for automated order routing.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Provider Name</TableHead>
+                      <TableHead>API Endpoint</TableHead>
+                      <TableHead>Automated Profit Markup</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {providersList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-6 text-xs text-muted-foreground">
+                          No external supplier APIs connected yet. Connect your first SMM provider above!
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      providersList.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-bold text-xs">{p.name}</TableCell>
+                          <TableCell className="font-mono text-xs text-muted-foreground">{p.api_url}</TableCell>
+                          <TableCell><Badge className="bg-amber-500/20 text-amber-400 font-mono text-xs border-amber-500/30">+{p.margin_percentage}% Profit Margin</Badge></TableCell>
+                          <TableCell><Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">{p.is_active ? "Active" : "Inactive"}</Badge></TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* BANK & PAYMENT SETTINGS TAB */}
+        <TabsContent value="bank-settings" className="space-y-4">
+          <Card className="border-emerald-500/40 bg-card/95 shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold flex items-center gap-2 text-emerald-400">
+                <CreditCard className="h-5 w-5 text-emerald-400" /> Live Bank Account & Payment Gateway Settings
+              </CardTitle>
+              <CardDescription>
+                Fill in your bank account details below. When customers click "Direct Bank Transfer" or "Wallet Top-up", these details will be displayed for them to transfer funds into your bank account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveBankConfig} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-foreground">Bank Name</label>
+                  <Input
+                    placeholder="e.g. Moniepoint / GTBank / Kuda"
+                    value={bankConfigForm.bank_name}
+                    onChange={(e) => setBankConfigForm({ ...bankConfigForm, bank_name: e.target.value })}
+                    className="bg-muted/40 text-sm font-semibold"
+                  />
+                  <p className="text-[10px] text-muted-foreground">The name of your bank institution.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-foreground">Account Name</label>
+                  <Input
+                    placeholder="e.g. HopeSocial Ltd"
+                    value={bankConfigForm.account_name}
+                    onChange={(e) => setBankConfigForm({ ...bankConfigForm, account_name: e.target.value })}
+                    className="bg-muted/40 text-sm font-semibold"
+                  />
+                  <p className="text-[10px] text-muted-foreground">The legal name on your bank account.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-foreground">Account Number</label>
+                  <Input
+                    placeholder="e.g. 2034829102"
+                    value={bankConfigForm.account_number}
+                    onChange={(e) => setBankConfigForm({ ...bankConfigForm, account_number: e.target.value })}
+                    className="bg-muted/40 text-sm font-mono font-bold text-emerald-400 tracking-wider"
+                  />
+                  <p className="text-[10px] text-muted-foreground">10-digit account number customers copy.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-foreground">Flutterwave Public Key</label>
+                  <Input
+                    placeholder="FLWPUBK_LIVE-..."
+                    value={bankConfigForm.flutterwave_public_key}
+                    onChange={(e) => setBankConfigForm({ ...bankConfigForm, flutterwave_public_key: e.target.value })}
+                    className="bg-muted/40 text-sm font-mono"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Flutterwave API key for card checkout.</p>
+                </div>
+
+                <div className="sm:col-span-2 lg:col-span-4 flex justify-end pt-3 border-t border-border/40">
+                  <Button
+                    type="submit"
+                    disabled={savingBankConfig}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold gap-2 text-sm shadow-lg shadow-emerald-500/20 py-5 px-6"
+                  >
+                    {savingBankConfig ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    <span>Save & Publish Live Payment Details</span>
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* 2. ALL PLATFORM ORDERS TAB */}
         <TabsContent value="orders" className="space-y-4">
           <Card className="border-border/60 bg-card">
@@ -595,13 +1332,34 @@ export default function AdminDashboardPage() {
                               <div className="font-semibold text-xs text-foreground">@{o.user_username || "user"}</div>
                               <div className="text-[11px] text-muted-foreground">{o.user_email || "customer@hopesocial.com"}</div>
                             </TableCell>
-                            <TableCell className="max-w-[220px]">
-                              <span className="truncate text-xs font-medium block">{o.service_name || o.service || "Social Media Service"}</span>
+                            <TableCell className="max-w-[260px]">
+                              <div className="flex flex-col min-w-0">
+                                <span className="truncate text-xs font-semibold text-foreground">
+                                  {o.service_name || o.service || "Social Media Service"}
+                                </span>
+                                <span className="text-[11px] text-emerald-400 font-mono font-medium">
+                                  {isAccount
+                                    ? "1x Account Credentials"
+                                    : `${(o.quantity || 1000).toLocaleString()} ${
+                                        sName.includes("like")
+                                          ? "Likes"
+                                          : sName.includes("follower")
+                                          ? "Followers"
+                                          : sName.includes("view")
+                                          ? "Views"
+                                          : sName.includes("subscriber")
+                                          ? "Subscribers"
+                                          : sName.includes("member")
+                                          ? "Members"
+                                          : "Items"
+                                      }`}
+                                </span>
+                              </div>
                             </TableCell>
                             <TableCell className="max-w-[160px] font-mono text-[11px] text-muted-foreground truncate">
                               {o.target_link || "N/A"}
                             </TableCell>
-                            <TableCell className="text-right font-mono text-xs">{o.quantity || 1}</TableCell>
+                            <TableCell className="text-right font-mono text-xs font-semibold">{(o.quantity || 1).toLocaleString()}</TableCell>
                             <TableCell className="text-right tabular-nums font-semibold text-xs text-foreground">
                               ₦{parseFloat(o.total_amount || o.amount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
                             </TableCell>

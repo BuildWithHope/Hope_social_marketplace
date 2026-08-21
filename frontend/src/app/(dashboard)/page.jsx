@@ -127,7 +127,7 @@ export default function RootPage() {
   const chartData = stats?.monthly_spending?.map((m) => ({ m: m.month, v: m.amount })) || mockMonthlySpending;
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title={`Welcome back, ${displayName}`}
         description="Here's what's happening across your marketplace today."
@@ -258,12 +258,32 @@ export default function RootPage() {
                       return (
                         <TableRow key={o.id || o.order_id} className="border-border/40 hover:bg-muted/30">
                           <TableCell className="font-mono text-xs text-muted-foreground">#{o.id || o.order_id}</TableCell>
-                          <TableCell className="max-w-[280px]">
+                          <TableCell className="max-w-[300px]">
                             <div className="flex items-center gap-2.5">
                               <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
                                 <Icon className="h-3.5 w-3.5" />
                               </div>
-                              <span className="truncate text-xs font-medium">{o.service_name || o.service || "Social Service"}</span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="truncate text-xs font-semibold text-foreground">
+                                  {o.service_name || o.service || "Social Service"}
+                                </span>
+                                <span className="text-[11px] text-emerald-400 font-mono font-medium">
+                                  {isAccount
+                                    ? "1x Account Credentials"
+                                    : `${(o.quantity || 1000).toLocaleString()} ${(o.service_name || o.service || "").toLowerCase().includes("like")
+                                      ? "Likes"
+                                      : (o.service_name || o.service || "").toLowerCase().includes("follower")
+                                        ? "Followers"
+                                        : (o.service_name || o.service || "").toLowerCase().includes("view")
+                                          ? "Views"
+                                          : (o.service_name || o.service || "").toLowerCase().includes("subscriber")
+                                            ? "Subscribers"
+                                            : (o.service_name || o.service || "").toLowerCase().includes("member")
+                                              ? "Members"
+                                              : "Items"
+                                    }`}
+                                </span>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell><StatusBadge status={o.status || "Pending"} /></TableCell>
