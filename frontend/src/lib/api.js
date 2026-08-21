@@ -293,4 +293,11 @@ export async function createAdminProvider(data) {
   });
 }
 
+export async function approveAdminOrder(orderId, status = "Completed") {
+  return fetchApi(`/admin/orders/${orderId}/approve/`, {
+    method: "POST",
+    body: JSON.stringify({ status }),
+  });
+}
+
 

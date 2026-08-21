@@ -912,6 +912,44 @@ class AdminOrdersListView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    def patch(self, request, order_id=None):
+        try:
+            oid = order_id or request.data.get('order_id')
+            if not oid:
+                return Response({"error": "Order ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+            order = Order.objects.filter(id=oid).first()
+            if not order:
+                return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            new_status = request.data.get('status', 'Completed')
+            order.status = new_status
+
+            # If order was connected to a provider service and now approved, forward to supplier API
+            if new_status in ['Completed', 'Processing'] and order.service and order.service.provider and order.service.provider.is_active and order.service.provider_service_id:
+                client = SMMProviderClient(order.service.provider.api_url, order.service.provider.api_key)
+                res = client.place_order(order.service.provider_service_id, order.target_link, order.quantity)
+                if res.get('success'):
+                    order.provider_order_id = str(res.get('order_id'))
+                    order.status = 'Processing'
+
+            order.save()
+
+            Notification.objects.create(
+                user=order.user,
+                title=f"Order #{order.id} Approved!",
+                message=f"Your bank transfer payment for '{order.service_name or order.target_link}' has been verified & approved by Admin!"
+            )
+
+            return Response({
+                "message": f"Order #{order.id} approved & status set to '{order.status}'!",
+                "order": OrderSerializer(order).data
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request, order_id=None):
+        return self.patch(request, order_id=order_id)
+
 class PaymentConfigView(APIView):
     permission_classes = [permissions.AllowAny]
 

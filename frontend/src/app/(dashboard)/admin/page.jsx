@@ -32,7 +32,7 @@ import {
   getPaymentConfig, updatePaymentConfig,
   getServices, getAccounts, createService, updateService, deleteService,
   createAccountItem, updateAccountItem, deleteAccountItem,
-  getAdminProviders, createAdminProvider
+  getAdminProviders, createAdminProvider, approveAdminOrder
 } from "@/lib/api";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 
@@ -1501,10 +1501,26 @@ export default function AdminDashboardPage() {
                               ₦{parseFloat(o.total_amount || o.amount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell>
-                              <StatusBadge status={o.status || "Completed"} />
+                              <StatusBadge status={o.status || "Pending"} />
                             </TableCell>
                             <TableCell className="text-right">
-                              {isAccount ? (
+                              {String(o.status || '').toLowerCase().includes('pending') ? (
+                                <Button
+                                  size="xs"
+                                  onClick={async () => {
+                                    try {
+                                      await approveAdminOrder(o.id || o.order_id);
+                                      toast.success(`Order #${o.id || o.order_id} approved! Credentials unlocked for customer.`);
+                                      loadData();
+                                    } catch (err) {
+                                      toast.error(err.message || "Failed to approve order.");
+                                    }
+                                  }}
+                                  className="h-7 bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-[11px] gap-1 cursor-pointer shadow-sm"
+                                >
+                                  <CheckCircle2 className="h-3 w-3" /> Approve & Unlock
+                                </Button>
+                              ) : isAccount ? (
                                 <Button
                                   variant="outline"
                                   size="xs"
@@ -1514,7 +1530,7 @@ export default function AdminDashboardPage() {
                                   <Download className="h-3 w-3 mr-1" /> Credentials
                                 </Button>
                               ) : (
-                                <span className="text-[11px] text-muted-foreground italic">Service Completed</span>
+                                <span className="text-[11px] text-emerald-400 font-semibold italic">Approved / Active</span>
                               )}
                             </TableCell>
                             <TableCell className="text-right text-xs text-muted-foreground">

@@ -34,5 +34,6 @@ urlpatterns = [
     path('admin/support/tickets/', AdminSupportTicketListView.as_view(), name='admin-ticket-list'),
     path('admin/support/tickets/<int:ticket_id>/reply/', AdminTicketReplyView.as_view(), name='admin-ticket-reply'),
     path('admin/orders/', AdminOrdersListView.as_view(), name='admin-orders-list'),
+    path('admin/orders/<int:order_id>/approve/', AdminOrdersListView.as_view(), name='admin-order-approve'),
     path('admin/providers/', ProviderListView.as_view(), name='admin-providers'),
 ]
