@@ -191,8 +191,9 @@ export default function TransactionsPage() {
                         </TableRow>
                       ) : (
                         orders.map((o) => {
-                          const isCompleted = String(o.status || '').toLowerCase() === "completed" || String(o.status || '').toLowerCase() === "completed / active";
-                          const isPending = !isCompleted;
+                          const statusStr = String(o.status || '').toLowerCase();
+                          const isCompleted = (statusStr === "completed" || statusStr === "completed / active") && Boolean(o.deliverable_info);
+                          const isAccount = (o.service_name || o.target_link || "").toLowerCase().includes("account") || (o.service_name || "").toLowerCase().includes("aged");
 
                           return (
                             <TableRow key={o.id} className="border-border/40 hover:bg-muted/20">
@@ -211,7 +212,7 @@ export default function TransactionsPage() {
                                 {o.date || o.created_at ? new Date(o.date || o.created_at).toLocaleDateString() : "Recently"}
                               </TableCell>
                               <TableCell className="text-right">
-                                {isCompleted ? (
+                                {isCompleted && isAccount ? (
                                   <Button
                                     size="sm"
                                     className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold gap-1.5 shadow-md shadow-emerald-500/10 cursor-pointer"
@@ -220,15 +221,15 @@ export default function TransactionsPage() {
                                     <Key className="h-3.5 w-3.5" />
                                     <span>Download Credentials</span>
                                   </Button>
-                                ) : isPending ? (
+                                ) : isAccount ? (
                                   <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 font-semibold gap-1 text-[11px]">
                                     <Clock className="h-3 w-3" />
                                     <span>Awaiting Admin Approval</span>
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline" className="border-border/60 text-muted-foreground text-[11px]">
-                                    {o.status || "Processing"}
-                                  </Badge>
+                                  <span className="text-xs text-muted-foreground italic font-medium">
+                                    {statusStr === "completed" ? "Service Delivered" : "Awaiting Approval"}
+                                  </span>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -366,17 +367,8 @@ export default function TransactionsPage() {
               </DialogHeader>
 
               <div className="space-y-3 py-2">
-                <div className="rounded-xl border border-emerald-500/30 bg-slate-950 p-4 font-mono text-xs text-emerald-400 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                  {selectedDeliverable.deliverable_info || (
-                    `=== ACCOUNT ACCESS & CREDENTIALS ===\n` +
-                    `Order ID: #${selectedDeliverable.id}\n` +
-                    `Item: ${selectedDeliverable.service_name}\n` +
-                    `Status: Verified / Completed\n` +
-                    `\n` +
-                    `Access Info:\n` +
-                    `Your account credentials have been allocated.\n` +
-                    `Contact support or check your email for 2FA backup codes if required.`
-                  )}
+                <div className="rounded-xl border border-emerald-500/30 bg-slate-950 p-4 font-mono text-xs text-emerald-400 leading-relaxed overflow-x-auto whitespace-pre-wrap select-all">
+                  {selectedDeliverable.deliverable_info || "No credentials specified for this item."}
                 </div>
 
                 <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-300">

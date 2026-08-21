@@ -209,7 +209,12 @@ class OrderListCreateView(APIView):
         try:
             orders = Order.objects.filter(user=request.user).order_by('-date')
             serializer = OrderSerializer(orders, many=True)
-            return Response(serializer.data)
+            data = serializer.data
+            for item in data:
+                status_str = str(item.get('status', '')).lower()
+                if 'completed' not in status_str and 'active' not in status_str:
+                    item['deliverable_info'] = ""
+            return Response(data)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -263,8 +268,8 @@ class OrderListCreateView(APIView):
 
                 total_amount = account_item.price * Decimal(quantity)
                 item_name = f"{account_item.platform} Aged Account ({account_item.name})"
-                account_desc = getattr(account_item, 'description', '') or f"Account Title: {account_item.name}\nPlatform: {account_item.platform} ({account_item.year})"
-                deliverables = f"=== ACCOUNT ACCESS & CREDENTIALS ===\nAccount Title: {account_item.name}\nPlatform: {account_item.platform} ({account_item.year})\nCountry: {account_item.country}\n\nLogin Specs / Credentials:\n{account_desc}\n\nDate Issued: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                account_desc = getattr(account_item, 'description', '') or ''
+                deliverables = account_desc.strip() if account_desc.strip() else f"Account Title: {account_item.name}\nPlatform: {account_item.platform} ({account_item.year})"
 
             # If user selected Wallet Balance as payment method, verify & deduct balance
             if payment_method == 'Wallet Balance':
@@ -277,25 +282,27 @@ class OrderListCreateView(APIView):
                 request.user.save()
 
             provider_order_id = None
-            is_bank_transfer = any(kw in str(payment_method).lower() for kw in ['bank', 'transfer'])
-            is_instant_payment = not is_bank_transfer
-            order_status = 'Completed' if is_instant_payment else 'Pending'
+            is_bank_transfer = any(kw in str(payment_method).lower() for kw in ['bank', 'transfer', 'manual', 'wire'])
 
-            # If connected to a supplier API for SMM service, forward order to supplier
-            if service and service.provider and service.provider.is_active and service.provider_service_id:
-                client = SMMProviderClient(service.provider.api_url, service.provider.api_key)
-                result = client.place_order(service.provider_service_id, target_link, quantity)
+            if is_bank_transfer:
+                order_status = 'Pending'
+            else:
+                order_status = 'Completed'
+                # If connected to a supplier API for SMM service, forward order to supplier
+                if service and service.provider and service.provider.is_active and service.provider_service_id:
+                    client = SMMProviderClient(service.provider.api_url, service.provider.api_key)
+                    result = client.place_order(service.provider_service_id, target_link, quantity)
 
-                if result.get('success'):
-                    provider_order_id = str(result.get('order_id'))
-                    order_status = 'Processing'
-                elif payment_method == 'Wallet Balance':
-                    # Refund user wallet if supplier API failed
-                    request.user.wallet_balance += total_amount
-                    request.user.save()
-                    return Response({
-                        "error": f"Supplier API Error: {result.get('error')}. Money refunded to your wallet."
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                    if result.get('success'):
+                        provider_order_id = str(result.get('order_id'))
+                        order_status = 'Processing'
+                    elif payment_method == 'Wallet Balance':
+                        # Refund user wallet if supplier API failed
+                        request.user.wallet_balance += total_amount
+                        request.user.save()
+                        return Response({
+                            "error": f"Supplier API Error: {result.get('error')}. Money refunded to your wallet."
+                        }, status=status.HTTP_400_BAD_REQUEST)
 
             order = Order.objects.create(
                 user=request.user,
