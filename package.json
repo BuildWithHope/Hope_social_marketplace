@@ -6,7 +6,8 @@
     "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"yellow,cyan\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && python manage.py runserver 8000",
-    "build": "cd frontend && npm run build"
+    "build": "cd frontend && npm install && npm run build",
+    "vercel-build": "cd frontend && npm install && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
