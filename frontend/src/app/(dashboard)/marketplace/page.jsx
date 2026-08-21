@@ -436,6 +436,7 @@ export default function Marketplace() {
               </DialogDescription>
             </DialogHeader>
 
+            <div className="space-y-4 py-2">
               {/* Rate & Slashed Original Price Banner */}
               {(() => {
                 const currentRate = parseFloat(selectedService.rate_per_1k || selectedService.price || 1500);
