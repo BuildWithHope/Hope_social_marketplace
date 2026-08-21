@@ -930,7 +930,10 @@ export default function AdminDashboardPage() {
                     value={newServiceForm.rate_per_1k}
                     onChange={(e) => setNewServiceForm({ ...newServiceForm, rate_per_1k: e.target.value })}
                     className="bg-slate-900 text-xs font-mono font-bold text-emerald-400"
-                             <div className="space-y-1.5">
+                  />
+                </div>
+
+                <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Badge Tag</label>
                   <Input
                     placeholder="e.g. Popular, Best, Fast, Instant"
@@ -1033,7 +1036,6 @@ export default function AdminDashboardPage() {
                 </Table>
               </div>
             </CardContent>
-          </Card>  </CardContent>
           </Card>
         </TabsContent>
 
@@ -1119,7 +1121,11 @@ export default function AdminDashboardPage() {
                     placeholder="25000.00"
                     value={newAccountForm.price}
                     onChange={(e) => setNewAccountForm({ ...newAccountForm, price: e.target.value })}
-                    className="bg-slate-900 text                <div className="space-y-1.5">
+                    className="bg-slate-900 text-xs font-mono font-bold text-cyan-400"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Badge Tag</label>
                   <Input
                     placeholder="e.g. OG Email Included, Verified, 2FA Attached"
@@ -1220,9 +1226,6 @@ export default function AdminDashboardPage() {
                     )}
                   </TableBody>
                 </Table>
-              </div>
-            </CardContent>
-          </Card>             </Table>
               </div>
             </CardContent>
           </Card>
