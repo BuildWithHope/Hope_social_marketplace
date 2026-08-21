@@ -68,14 +68,18 @@ DATABASES = {
 if os.environ.get('DATABASE_URL'):
     try:
         import dj_database_url
+        db_url = os.environ.get('DATABASE_URL', '').strip()
+        is_local = 'localhost' in db_url or '127.0.0.1' in db_url
         db_config = dj_database_url.config(
-            default=os.environ.get('DATABASE_URL'),
+            default=db_url,
             conn_max_age=600,
             conn_health_checks=True,
+            ssl_require=not is_local,
         )
         DATABASES['default'] = db_config
-    except Exception:
-        pass
+        print("DATABASE: Successfully configured remote PostgreSQL database from DATABASE_URL.")
+    except Exception as e:
+        print(f"DATABASE ERROR: Failed to configure PostgreSQL from DATABASE_URL: {e}")
 
 AUTH_USER_MODEL = 'users.User'
 
