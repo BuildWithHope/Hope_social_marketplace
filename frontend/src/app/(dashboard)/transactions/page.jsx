@@ -192,8 +192,9 @@ export default function TransactionsPage() {
                       ) : (
                         orders.map((o) => {
                           const statusStr = String(o.status || '').toLowerCase();
-                          const isCompleted = (statusStr === "completed" || statusStr === "completed / active") && Boolean(o.deliverable_info);
-                          const isAccount = (o.service_name || o.target_link || "").toLowerCase().includes("account") || (o.service_name || "").toLowerCase().includes("aged");
+                          const isCompleted = statusStr === "completed" || statusStr === "completed / active";
+                          const hasDeliverables = Boolean(o.deliverable_info && o.deliverable_info.trim().length > 0);
+                          const isAccount = Boolean(o.account || (o.service_name || o.target_link || "").toLowerCase().includes("account") || (o.service_name || "").toLowerCase().includes("aged"));
 
                           return (
                             <TableRow key={o.id} className="border-border/40 hover:bg-muted/20">
@@ -212,23 +213,25 @@ export default function TransactionsPage() {
                                 {o.date || o.created_at ? new Date(o.date || o.created_at).toLocaleDateString() : "Recently"}
                               </TableCell>
                               <TableCell className="text-right">
-                                {isCompleted && isAccount ? (
-                                  <Button
-                                    size="sm"
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold gap-1.5 shadow-md shadow-emerald-500/10 cursor-pointer"
-                                    onClick={() => setSelectedDeliverable(o)}
-                                  >
-                                    <Key className="h-3.5 w-3.5" />
-                                    <span>Download Credentials</span>
-                                  </Button>
-                                ) : isAccount ? (
-                                  <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 font-semibold gap-1 text-[11px]">
-                                    <Clock className="h-3 w-3" />
-                                    <span>Awaiting Admin Approval</span>
-                                  </Badge>
+                                {isAccount ? (
+                                  isCompleted && hasDeliverables ? (
+                                    <Button
+                                      size="sm"
+                                      className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold gap-1.5 shadow-md shadow-emerald-500/10 cursor-pointer"
+                                      onClick={() => setSelectedDeliverable(o)}
+                                    >
+                                      <Key className="h-3.5 w-3.5" />
+                                      <span>Download Credentials</span>
+                                    </Button>
+                                  ) : (
+                                    <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 font-semibold gap-1 text-[11px]">
+                                      <Clock className="h-3 w-3" />
+                                      <span>Awaiting Admin Approval</span>
+                                    </Badge>
+                                  )
                                 ) : (
                                   <span className="text-xs text-muted-foreground italic font-medium">
-                                    {statusStr === "completed" ? "Service Delivered" : "Awaiting Approval"}
+                                    {isCompleted ? "Service Delivered" : "Awaiting Approval"}
                                   </span>
                                 )}
                               </TableCell>

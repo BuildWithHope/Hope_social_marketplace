@@ -212,7 +212,8 @@ class OrderListCreateView(APIView):
             data = serializer.data
             for item in data:
                 status_str = str(item.get('status', '')).lower()
-                if 'completed' not in status_str and 'active' not in status_str:
+                # For any order not completed/active OR for social media services, hide deliverable_info credentials!
+                if ('completed' not in status_str and 'active' not in status_str) or item.get('service') is not None:
                     item['deliverable_info'] = ""
             return Response(data)
         except Exception as e:
@@ -312,7 +313,7 @@ class OrderListCreateView(APIView):
                 quantity=quantity,
                 total_amount=total_amount,
                 status=order_status,
-                deliverable_info=deliverables if not service else f"Automated Service Target Link: {target_link}",
+                deliverable_info=deliverables if not service else "",
                 provider_order_id=provider_order_id,
             )
 
