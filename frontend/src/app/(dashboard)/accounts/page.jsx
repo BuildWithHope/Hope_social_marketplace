@@ -690,18 +690,27 @@ export default function AccountsPage() {
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</div>
                       <div className="text-lg font-bold tracking-tight text-emerald-400 font-mono">
-                        ₦{a.price.toLocaleString()}
+                        ₦{parseFloat(a.price || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      className="font-semibold shadow-md bg-emerald-500 hover:bg-emerald-600 text-black gap-1.5"
-                      disabled={!a.available}
-                      onClick={() => openBuyModal(a)}
-                    >
-                      <span>Buy Account</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
+                    {(() => {
+                      const isAvailable = a.available !== false && a.is_active !== false && a.in_stock !== false && a.inStock !== false && (a.stock_count === undefined || a.stock_count > 0);
+                      return (
+                        <Button
+                          size="sm"
+                          className={`font-semibold shadow-md gap-1.5 ${
+                            isAvailable
+                              ? "bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer"
+                              : "bg-muted text-muted-foreground cursor-not-allowed"
+                          }`}
+                          disabled={!isAvailable}
+                          onClick={() => isAvailable && openBuyModal(a)}
+                        >
+                          <span>{isAvailable ? "Buy Account" : "Out of stock"}</span>
+                          {isAvailable && <ArrowRight className="h-3.5 w-3.5" />}
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>
@@ -768,13 +777,23 @@ export default function AccountsPage() {
                         ₦{a.price.toLocaleString()}
                       </td>
                       <td className="p-4 text-right">
-                        <Button
-                          size="sm"
-                          className="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold"
-                          onClick={() => openBuyModal(a)}
-                        >
-                          Buy Account
-                        </Button>
+                        {(() => {
+                          const isAvailable = a.available !== false && a.is_active !== false && a.in_stock !== false && a.inStock !== false && (a.stock_count === undefined || a.stock_count > 0);
+                          return (
+                            <Button
+                              size="sm"
+                              disabled={!isAvailable}
+                              className={`font-semibold ${
+                                isAvailable
+                                  ? "bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer"
+                                  : "bg-muted text-muted-foreground cursor-not-allowed"
+                              }`}
+                              onClick={() => isAvailable && openBuyModal(a)}
+                            >
+                              {isAvailable ? "Buy Account" : "Out of stock"}
+                            </Button>
+                          );
+                        })()}
                       </td>
                     </tr>
                   );

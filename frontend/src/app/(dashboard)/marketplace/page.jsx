@@ -372,7 +372,12 @@ export default function Marketplace() {
                 {/* Footer: Rate & Order Action */}
                 <div className="mt-5 flex items-end justify-between border-t border-border/40 pt-3">
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Rate per 1,000</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <span>Rate per 1k</span>
+                      <span className="line-through text-muted-foreground/60 font-mono text-[10px]">
+                        ₦{(rate * 1.35).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
                     <div className="text-xl font-extrabold text-emerald-400 font-mono">
                       ₦{rate.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                     </div>
@@ -431,68 +436,111 @@ export default function Marketplace() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-2">
-              {/* Target Link Input */}
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-                  <ExternalLink className="h-3.5 w-3.5 text-emerald-400" /> Target Profile / Post URL
-                </label>
-                <Input
-                  placeholder={`e.g. https://${selectedService.platform.toLowerCase()}.com/username`}
-                  value={targetLink}
-                  onChange={(e) => setTargetLink(e.target.value)}
-                  className="mt-1 bg-muted/40 font-mono text-xs"
-                />
-              </div>
+              {/* Rate & Slashed Original Price Banner */}
+              {(() => {
+                const currentRate = parseFloat(selectedService.rate_per_1k || selectedService.price || 1500);
+                const slashedRate = Math.round(currentRate * 1.35);
+                const minQty = Math.max(1000, parseInt(selectedService.min_order || selectedService.min || 1000));
+                const maxQty = parseInt(selectedService.max_order || selectedService.max || 100000);
 
-              {/* Quantity Selector */}
-              <div>
-                <div className="flex justify-between items-center text-xs font-semibold text-muted-foreground mb-1">
-                  <span>Select Quantity</span>
-                  <span className="text-foreground font-mono">
-                    Min: {(selectedService.min_order || selectedService.min || 100).toLocaleString()} · Max: {(selectedService.max_order || selectedService.max || 100000).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card p-3">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => setOrderQuantity((q) => Math.max(selectedService.min_order || selectedService.min || 100, q - 500))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
+                return (
+                  <>
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 flex items-center justify-between">
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Special Rate / 1,000 Items</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="line-through text-xs font-mono text-muted-foreground">₦{slashedRate.toLocaleString()}</span>
+                          <span className="text-lg font-extrabold font-mono text-emerald-400">₦{currentRate.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full border border-emerald-500/30">26% OFF</span>
+                        </div>
+                      </div>
+                      <div className="text-right text-[11px] text-muted-foreground font-mono">
+                        <div>Min: {minQty.toLocaleString()}</div>
+                        <div>Max: {maxQty.toLocaleString()}</div>
+                      </div>
+                    </div>
 
-                  <Input
-                    type="number"
-                    value={orderQuantity}
-                    onChange={(e) => setOrderQuantity(Math.max(10, parseInt(e.target.value) || 0))}
-                    className="text-center font-bold text-base font-mono bg-muted/30"
-                  />
+                    {/* Target Link Input */}
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <ExternalLink className="h-3.5 w-3.5 text-emerald-400" /> Target Profile / Post URL
+                      </label>
+                      <Input
+                        placeholder={`e.g. https://${selectedService.platform.toLowerCase()}.com/username`}
+                        value={targetLink}
+                        onChange={(e) => setTargetLink(e.target.value)}
+                        className="mt-1 bg-muted/40 font-mono text-xs"
+                      />
+                    </div>
 
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => setOrderQuantity((q) => Math.min(selectedService.max_order || selectedService.max || 100000, q + 500))}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+                    {/* Quantity Selector with 500 Step Increments */}
+                    <div>
+                      <div className="flex justify-between items-center text-xs font-semibold text-muted-foreground mb-1.5">
+                        <span>Select Quantity (Min 1,000 · Step 500)</span>
+                        <span className="text-foreground font-mono font-bold">{orderQuantity.toLocaleString()} items</span>
+                      </div>
+                      <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card p-3">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9 shrink-0 font-bold"
+                          onClick={() => setOrderQuantity((q) => Math.max(minQty, q - 500))}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
 
-              {/* Price Calculation Box */}
-              <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
-                <div>
-                  <div className="text-xs text-muted-foreground">Total Price Calculation</div>
-                  <div className="text-xs font-mono text-muted-foreground">
-                    ({orderQuantity.toLocaleString()} items @ ₦{parseFloat(selectedService.rate_per_1k || selectedService.price || 1500).toLocaleString()}/1k)
-                  </div>
-                </div>
-                <div className="text-2xl font-bold font-mono text-emerald-400">
-                  ₦{((orderQuantity / 1000) * parseFloat(selectedService.rate_per_1k || selectedService.price || 1500)).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-              </div>
+                        <Input
+                          type="number"
+                          step={500}
+                          value={orderQuantity}
+                          onChange={(e) => setOrderQuantity(Math.max(minQty, parseInt(e.target.value) || minQty))}
+                          className="text-center font-extrabold text-lg font-mono bg-muted/30"
+                        />
+
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9 shrink-0 font-bold"
+                          onClick={() => setOrderQuantity((q) => Math.min(maxQty, q + 500))}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Quick Select Quantity Pills */}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        {[1000, 1500, 2000, 2500, 5000, 10000].map((qty) => (
+                          <button
+                            key={qty}
+                            type="button"
+                            onClick={() => setOrderQuantity(qty)}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-mono font-semibold transition-all border ${
+                              orderQuantity === qty
+                                ? "bg-emerald-500 text-black border-emerald-400 font-bold"
+                                : "bg-muted/40 border-border/60 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                            }`}
+                          >
+                            {qty.toLocaleString()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Price Calculation Box */}
+                    <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
+                      <div>
+                        <div className="text-xs font-bold text-foreground">Total Price Payable</div>
+                        <div className="text-xs font-mono text-muted-foreground mt-0.5">
+                          ({orderQuantity.toLocaleString()} items @ ₦{currentRate.toLocaleString()}/1k)
+                        </div>
+                      </div>
+                      <div className="text-2xl font-extrabold font-mono text-emerald-400">
+                        ₦{((orderQuantity / 1000) * currentRate).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <DialogFooter className="flex flex-col sm:flex-row gap-2">
