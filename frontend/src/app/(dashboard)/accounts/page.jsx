@@ -495,38 +495,44 @@ export default function AccountsPage() {
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         <button
           onClick={() => setSelectedPlatform("all")}
-          className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all ${
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all border ${
             selectedPlatform === "all"
               ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
               : "bg-card border border-border/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
           }`}
         >
           <Zap className="h-3.5 w-3.5" />
-          <span>All Platforms ({accounts.length})</span>
+          <span>All Platforms ({activeAccounts.length})</span>
         </button>
 
-        {platforms.map((plat) => {
-          const Icon = platformIcons[plat];
-          const style = platformStyles[plat];
-          const count = accounts.filter((a) => a.platform === plat).length;
-          const isSelected = selectedPlatform === plat;
+        {(() => {
+          const presentPlatforms = new Set(activeAccounts.map((a) => a.platform));
+          const visiblePlatforms = platforms.filter((plat) => presentPlatforms.has(plat) || activeAccounts.some(a => a.platform?.toLowerCase() === plat.toLowerCase()));
+          const displayPlatforms = visiblePlatforms.length > 0 ? visiblePlatforms : Array.from(presentPlatforms);
 
-          return (
-            <button
-              key={plat}
-              onClick={() => setSelectedPlatform(plat)}
-              className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all border ${
-                isSelected
-                  ? style?.activePill || "bg-primary text-primary-foreground"
-                  : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              }`}
-            >
-              {Icon && createElement(Icon, { className: "h-3.5 w-3.5" })}
-              <span>{plat}</span>
-              <span className="rounded-full bg-muted/40 px-1.5 py-0.5 text-[10px] opacity-80">{count}</span>
-            </button>
-          );
-        })}
+          return displayPlatforms.map((plat) => {
+            const Icon = platformIcons[plat];
+            const style = platformStyles[plat];
+            const count = activeAccounts.filter((a) => a.platform === plat || a.platform?.toLowerCase() === plat.toLowerCase()).length;
+            const isSelected = selectedPlatform === plat;
+
+            return (
+              <button
+                key={plat}
+                onClick={() => setSelectedPlatform(plat)}
+                className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all border ${
+                  isSelected
+                    ? style?.activePill || "bg-primary text-primary-foreground"
+                    : "bg-card border-border/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`}
+              >
+                {Icon && createElement(Icon, { className: "h-3.5 w-3.5" })}
+                <span>{plat}</span>
+                <span className="rounded-full bg-muted/40 px-1.5 py-0.5 text-[10px] opacity-80">{count}</span>
+              </button>
+            );
+          });
+        })()}
       </div>
 
       {/* Filters & Search Toolbar */}
@@ -645,7 +651,7 @@ export default function AccountsPage() {
                         <span>{countryData.name}</span>
                       </div>
                       <Badge variant="outline" className={`text-[10px] uppercase font-semibold ${style.badgeBg}`}>
-                        {a.ageMonths >= 12 ? `Aged ${Math.floor(a.ageMonths / 12)}Y` : `${a.ageMonths}M Old`}
+                        {a.year ? `Year ${a.year}` : (a.ageMonths >= 12 ? `Aged ${Math.floor(a.ageMonths / 12)}Y` : 'Aged')}
                       </Badge>
                     </div>
 
@@ -654,14 +660,14 @@ export default function AccountsPage() {
                       <div className="rounded-xl border border-border/40 bg-muted/20 p-2.5">
                         <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Followers</div>
                         <div className="mt-0.5 font-bold text-sm text-foreground">
-                          {a.followers >= 1000 ? `${(a.followers / 1000).toFixed(1)}k` : a.followers}
+                          {a.followers ? (isNaN(a.followers) ? a.followers : (parseFloat(a.followers) >= 1000 ? `${(parseFloat(a.followers) / 1000).toFixed(1)}k` : a.followers)) : "10k"}
                         </div>
                       </div>
                       <div className="rounded-xl border border-border/40 bg-muted/20 p-2.5">
                         <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                          <CalendarDays className="h-3 w-3 text-muted-foreground" /> Age
+                          <CalendarDays className="h-3 w-3 text-muted-foreground" /> Creation Year
                         </div>
-                        <div className="mt-0.5 font-bold text-sm text-foreground">{a.ageMonths} Months</div>
+                        <div className="mt-0.5 font-bold text-sm text-foreground">{a.year ? `Year ${a.year}` : (a.ageYears ? `${a.ageYears} Years` : (a.ageMonths ? `${a.ageMonths} Months` : 'Aged'))}</div>
                       </div>
                       <div className="rounded-xl border border-border/40 bg-muted/20 p-2.5">
                         <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
@@ -766,10 +772,10 @@ export default function AccountsPage() {
                         </span>
                       </td>
                       <td className="p-4 font-bold">
-                        {a.followers >= 1000 ? `${(a.followers / 1000).toFixed(1)}k` : a.followers}
+                        {a.followers ? (isNaN(a.followers) ? a.followers : (parseFloat(a.followers) >= 1000 ? `${(parseFloat(a.followers) / 1000).toFixed(1)}k` : a.followers)) : "10k"}
                       </td>
-                      <td className="p-4 text-muted-foreground">
-                        {a.ageMonths} Months
+                      <td className="p-4 text-muted-foreground font-medium">
+                        {a.year ? `Year ${a.year}` : (a.ageYears ? `${a.ageYears} Years` : (a.ageMonths ? `${a.ageMonths} Months` : 'Aged'))}
                       </td>
                       <td className="p-4">
                         {a.emailIncluded ? (
