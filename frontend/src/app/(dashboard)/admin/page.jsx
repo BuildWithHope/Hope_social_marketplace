@@ -27,8 +27,8 @@ import {
   getAdminDeposits, confirmAdminDeposit, getUserProfile,
   getAdminSupportTickets, replyAdminSupportTicket, getAdminOrders,
   getPaymentConfig, updatePaymentConfig,
-  getServices, getAccounts, createService, deleteService,
-  createAccountItem, deleteAccountItem,
+  getServices, getAccounts, createService, updateService, deleteService,
+  createAccountItem, updateAccountItem, deleteAccountItem,
   getAdminProviders, createAdminProvider
 } from "@/lib/api";
 import { ProtectedRoute } from "@/components/auth/protected-route";
@@ -123,6 +123,7 @@ export default function AdminDashboardPage() {
     name: "",
     rate_per_1k: "1500.00",
     badge: "Popular",
+    stock_count: 1000,
     description: "",
   });
 
@@ -135,6 +136,36 @@ export default function AdminDashboardPage() {
     flag: "USA 🇺🇸",
     price: "25000.00",
     badge: "OG Email Included",
+    stock_count: 10,
+    description: "2FA active with full email login credentials.",
+  });
+
+  const [editingService, setEditingService] = useState(null);
+  const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
+  const [editServiceForm, setEditServiceForm] = useState({
+    platform: "Instagram",
+    category: "Followers",
+    name: "",
+    rate_per_1k: "1500.00",
+    badge: "Popular",
+    stock_count: 1000,
+    is_active: true,
+    description: "",
+  });
+
+  const [editingAccount, setEditingAccount] = useState(null);
+  const [isEditAccountOpen, setIsEditAccountOpen] = useState(false);
+  const [editAccountForm, setEditAccountForm] = useState({
+    platform: "Instagram",
+    category: "Verified Account",
+    name: "",
+    followers: "10,000",
+    year: 2022,
+    flag: "USA 🇺🇸",
+    price: "25000.00",
+    badge: "OG Email Included",
+    stock_count: 10,
+    is_in_stock: true,
     description: "2FA active with full email login credentials.",
   });
 
@@ -279,6 +310,67 @@ export default function AdminDashboardPage() {
       setAccountsList((prev) => prev.filter((a) => a.id !== id));
     } catch (err) {
       toast.error(err.message || "Failed to delete account listing.");
+    }
+  };
+
+  const openEditServiceModal = (svc) => {
+    setEditingService(svc);
+    setEditServiceForm({
+      platform: svc.platform || "Instagram",
+      category: svc.category || "Followers",
+      name: svc.name || "",
+      rate_per_1k: svc.rate_per_1k || "1500.00",
+      badge: svc.badge || "Popular",
+      stock_count: svc.stock_count !== undefined ? svc.stock_count : 1000,
+      is_active: svc.is_active !== false,
+      description: svc.description || "",
+    });
+    setIsEditServiceOpen(true);
+  };
+
+  const handleUpdateService = async (e) => {
+    e.preventDefault();
+    if (!editingService) return;
+    try {
+      await updateService(editingService.id, editServiceForm);
+      toast.success(`Service '${editServiceForm.name}' updated successfully!`);
+      setIsEditServiceOpen(false);
+      setEditingService(null);
+      loadData();
+    } catch (err) {
+      toast.error(err.message || "Failed to update service.");
+    }
+  };
+
+  const openEditAccountModal = (acc) => {
+    setEditingAccount(acc);
+    setEditAccountForm({
+      platform: acc.platform || "Instagram",
+      category: acc.category || "Verified Account",
+      name: acc.name || "",
+      followers: acc.followers || "10,000",
+      year: acc.year || 2022,
+      flag: acc.flag || acc.country || "USA 🇺🇸",
+      price: acc.price || "25000.00",
+      badge: acc.badge || "OG Email Included",
+      stock_count: acc.stock_count !== undefined ? acc.stock_count : 10,
+      is_in_stock: acc.is_in_stock !== false,
+      description: acc.description || "",
+    });
+    setIsEditAccountOpen(true);
+  };
+
+  const handleUpdateAccount = async (e) => {
+    e.preventDefault();
+    if (!editingAccount) return;
+    try {
+      await updateAccountItem(editingAccount.id, editAccountForm);
+      toast.success(`Account '${editAccountForm.name}' updated successfully!`);
+      setIsEditAccountOpen(false);
+      setEditingAccount(null);
+      loadData();
+    } catch (err) {
+      toast.error(err.message || "Failed to update account.");
     }
   };
 
@@ -838,16 +930,24 @@ export default function AdminDashboardPage() {
                     value={newServiceForm.rate_per_1k}
                     onChange={(e) => setNewServiceForm({ ...newServiceForm, rate_per_1k: e.target.value })}
                     className="bg-slate-900 text-xs font-mono font-bold text-emerald-400"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
+                             <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Badge Tag</label>
                   <Input
                     placeholder="e.g. Popular, Best, Fast, Instant"
                     value={newServiceForm.badge}
                     onChange={(e) => setNewServiceForm({ ...newServiceForm, badge: e.target.value })}
                     className="bg-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Stock Quantity / Capacity</label>
+                  <Input
+                    type="number"
+                    placeholder="1000"
+                    value={newServiceForm.stock_count}
+                    onChange={(e) => setNewServiceForm({ ...newServiceForm, stock_count: parseInt(e.target.value) || 0 })}
+                    className="bg-slate-900 text-xs font-mono text-cyan-400 font-bold"
                   />
                 </div>
 
@@ -875,7 +975,7 @@ export default function AdminDashboardPage() {
             <CardHeader className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-semibold">Active Services Inventory ({servicesList.length})</CardTitle>
-                <CardDescription className="text-xs">Manage or delete services. Deleting an item removes it from user view immediately.</CardDescription>
+                <CardDescription className="text-xs">Edit or delete growth services in your marketplace.</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -887,6 +987,7 @@ export default function AdminDashboardPage() {
                       <TableHead>Service Name</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Rate / 1k</TableHead>
+                      <TableHead>Stock</TableHead>
                       <TableHead>Badge</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -894,7 +995,7 @@ export default function AdminDashboardPage() {
                   <TableBody>
                     {servicesList.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-6 text-xs text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-6 text-xs text-muted-foreground">
                           No services found in database. Add your first service above!
                         </TableCell>
                       </TableRow>
@@ -905,8 +1006,17 @@ export default function AdminDashboardPage() {
                           <TableCell className="font-semibold text-xs text-foreground">{svc.name}</TableCell>
                           <TableCell><Badge variant="secondary" className="text-[10px]">{svc.category}</Badge></TableCell>
                           <TableCell className="font-mono text-xs font-bold text-emerald-400">₦{parseFloat(svc.rate_per_1k || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="font-mono text-xs text-cyan-400">{svc.stock_count !== undefined ? svc.stock_count : "1,000"}</TableCell>
                           <TableCell><Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">{svc.badge || "Standard"}</Badge></TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right space-x-1.5">
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => openEditServiceModal(svc)}
+                              className="cursor-pointer gap-1 text-[11px] border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10"
+                            >
+                              <Edit3 className="h-3 w-3" /> Edit
+                            </Button>
                             <Button
                               variant="destructive"
                               size="xs"
@@ -923,6 +1033,7 @@ export default function AdminDashboardPage() {
                 </Table>
               </div>
             </CardContent>
+          </Card>  </CardContent>
           </Card>
         </TabsContent>
 
@@ -1008,17 +1119,24 @@ export default function AdminDashboardPage() {
                     placeholder="25000.00"
                     value={newAccountForm.price}
                     onChange={(e) => setNewAccountForm({ ...newAccountForm, price: e.target.value })}
-                    className="bg-slate-900 text-xs font-mono font-bold text-cyan-400"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
+                    className="bg-slate-900 text                <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Badge Tag</label>
                   <Input
                     placeholder="e.g. OG Email Included, Verified, 2FA Attached"
                     value={newAccountForm.badge}
                     onChange={(e) => setNewAccountForm({ ...newAccountForm, badge: e.target.value })}
                     className="bg-slate-900 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Stock Quantity</label>
+                  <Input
+                    type="number"
+                    placeholder="10"
+                    value={newAccountForm.stock_count}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, stock_count: parseInt(e.target.value) || 0 })}
+                    className="bg-slate-900 text-xs font-mono text-cyan-400 font-bold"
                   />
                 </div>
 
@@ -1046,7 +1164,7 @@ export default function AdminDashboardPage() {
             <CardHeader className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-semibold">Aged Accounts Inventory ({accountsList.length})</CardTitle>
-                <CardDescription className="text-xs">Manage active account listings. Deleting an account removes it from public sale.</CardDescription>
+                <CardDescription className="text-xs">Manage or edit active account listings in your directory.</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -1058,6 +1176,7 @@ export default function AdminDashboardPage() {
                       <TableHead>Account Name</TableHead>
                       <TableHead>Followers / Year</TableHead>
                       <TableHead>Country</TableHead>
+                      <TableHead>Stock</TableHead>
                       <TableHead>Price</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -1065,7 +1184,7 @@ export default function AdminDashboardPage() {
                   <TableBody>
                     {accountsList.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-6 text-xs text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-6 text-xs text-muted-foreground">
                           No aged accounts in inventory. Add your first account item above!
                         </TableCell>
                       </TableRow>
@@ -1075,9 +1194,18 @@ export default function AdminDashboardPage() {
                           <TableCell className="font-bold text-xs">{acc.platform}</TableCell>
                           <TableCell className="font-semibold text-xs text-foreground">{acc.name}</TableCell>
                           <TableCell className="text-xs">{acc.followers} · ({acc.year})</TableCell>
-                          <TableCell className="text-xs">{acc.flag}</TableCell>
+                          <TableCell className="text-xs">{acc.flag || acc.country}</TableCell>
+                          <TableCell className="font-mono text-xs text-cyan-400">{acc.stock_count !== undefined ? acc.stock_count : "10"}</TableCell>
                           <TableCell className="font-mono text-xs font-bold text-cyan-400">₦{parseFloat(acc.price || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right space-x-1.5">
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => openEditAccountModal(acc)}
+                              className="cursor-pointer gap-1 text-[11px] border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10"
+                            >
+                              <Edit3 className="h-3 w-3" /> Edit
+                            </Button>
                             <Button
                               variant="destructive"
                               size="xs"
@@ -1092,6 +1220,9 @@ export default function AdminDashboardPage() {
                     )}
                   </TableBody>
                 </Table>
+              </div>
+            </CardContent>
+          </Card>             </Table>
               </div>
             </CardContent>
           </Card>
@@ -1818,6 +1949,256 @@ export default function AdminDashboardPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* EDIT SERVICE MODAL DIALOG */}
+      <Dialog open={isEditServiceOpen} onOpenChange={setIsEditServiceOpen}>
+        <DialogContent className="sm:max-w-lg bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-emerald-400 font-bold flex items-center gap-2">
+              <Edit3 className="h-4 w-4" /> Edit Service #{editingService?.id}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Update pricing, platform, badge, or stock availability for this growth service.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateService} className="space-y-3 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Platform</label>
+                <select
+                  value={editServiceForm.platform}
+                  onChange={(e) => setEditServiceForm({ ...editServiceForm, platform: e.target.value })}
+                  className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-xs text-foreground focus:border-emerald-500"
+                >
+                  <option value="Instagram">Instagram</option>
+                  <option value="TikTok">TikTok</option>
+                  <option value="YouTube">YouTube</option>
+                  <option value="Telegram">Telegram</option>
+                  <option value="Twitter">Twitter / X</option>
+                  <option value="Facebook">Facebook</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Category</label>
+                <select
+                  value={editServiceForm.category}
+                  onChange={(e) => setEditServiceForm({ ...editServiceForm, category: e.target.value })}
+                  className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-xs text-foreground focus:border-emerald-500"
+                >
+                  <option value="Followers">Followers</option>
+                  <option value="Likes">Likes</option>
+                  <option value="Views">Views</option>
+                  <option value="Comments">Comments</option>
+                  <option value="Subscribers">Subscribers</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Service Title</label>
+              <Input
+                value={editServiceForm.name}
+                onChange={(e) => setEditServiceForm({ ...editServiceForm, name: e.target.value })}
+                className="bg-slate-900 text-xs font-semibold"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Rate Per 1,000 (₦)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editServiceForm.rate_per_1k}
+                  onChange={(e) => setEditServiceForm({ ...editServiceForm, rate_per_1k: e.target.value })}
+                  className="bg-slate-900 text-xs font-mono font-bold text-emerald-400"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Stock Quantity</label>
+                <Input
+                  type="number"
+                  value={editServiceForm.stock_count}
+                  onChange={(e) => setEditServiceForm({ ...editServiceForm, stock_count: parseInt(e.target.value) || 0 })}
+                  className="bg-slate-900 text-xs font-mono text-cyan-400 font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Badge Tag</label>
+                <Input
+                  value={editServiceForm.badge}
+                  onChange={(e) => setEditServiceForm({ ...editServiceForm, badge: e.target.value })}
+                  className="bg-slate-900 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Service Status</label>
+                <select
+                  value={editServiceForm.is_active ? "true" : "false"}
+                  onChange={(e) => setEditServiceForm({ ...editServiceForm, is_active: e.target.value === "true" })}
+                  className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-xs text-foreground focus:border-emerald-500"
+                >
+                  <option value="true">Active (Visible)</option>
+                  <option value="false">Hidden / Off</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Description</label>
+              <Input
+                value={editServiceForm.description}
+                onChange={(e) => setEditServiceForm({ ...editServiceForm, description: e.target.value })}
+                className="bg-slate-900 text-xs"
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" onClick={() => setIsEditServiceOpen(false)} className="text-xs">Cancel</Button>
+              <Button type="submit" className="bg-emerald-500 text-black font-bold text-xs">Save Service Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT ACCOUNT MODAL DIALOG */}
+      <Dialog open={isEditAccountOpen} onOpenChange={setIsEditAccountOpen}>
+        <DialogContent className="sm:max-w-lg bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-cyan-400 font-bold flex items-center gap-2">
+              <Edit3 className="h-4 w-4" /> Edit Account #{editingAccount?.id}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Update pricing, followers, stock inventory, or credentials for this aged account.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateAccount} className="space-y-3 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Platform</label>
+                <select
+                  value={editAccountForm.platform}
+                  onChange={(e) => setEditAccountForm({ ...editAccountForm, platform: e.target.value })}
+                  className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-xs text-foreground focus:border-cyan-500"
+                >
+                  <option value="Instagram">Instagram</option>
+                  <option value="Twitter">Twitter / X</option>
+                  <option value="TikTok">TikTok</option>
+                  <option value="YouTube">YouTube</option>
+                  <option value="Facebook">Facebook</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Account Title</label>
+                <Input
+                  value={editAccountForm.name}
+                  onChange={(e) => setEditAccountForm({ ...editAccountForm, name: e.target.value })}
+                  className="bg-slate-900 text-xs font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Followers</label>
+                <Input
+                  value={editAccountForm.followers}
+                  onChange={(e) => setEditAccountForm({ ...editAccountForm, followers: e.target.value })}
+                  className="bg-slate-900 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Year Created</label>
+                <Input
+                  type="number"
+                  value={editAccountForm.year}
+                  onChange={(e) => setEditAccountForm({ ...editAccountForm, year: parseInt(e.target.value) || 2022 })}
+                  className="bg-slate-900 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Country</label>
+                <Input
+                  value={editAccountForm.flag}
+                  onChange={(e) => setEditAccountForm({ ...editAccountForm, flag: e.target.value })}
+                  className="bg-slate-900 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Price (₦)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editAccountForm.price}
+                  onChange={(e) => setEditAccountForm({ ...editAccountForm, price: e.target.value })}
+                  className="bg-slate-900 text-xs font-mono font-bold text-cyan-400"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Stock Quantity</label>
+                <Input
+                  type="number"
+                  value={editAccountForm.stock_count}
+                  onChange={(e) => setEditAccountForm({ ...editAccountForm, stock_count: parseInt(e.target.value) || 0 })}
+                  className="bg-slate-900 text-xs font-mono text-cyan-400 font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">Badge Tag</label>
+                <Input
+                  value={editAccountForm.badge}
+                  onChange={(e) => setEditAccountForm({ ...editAccountForm, badge: e.target.value })}
+                  className="bg-slate-900 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">In Stock Status</label>
+                <select
+                  value={editAccountForm.is_in_stock ? "true" : "false"}
+                  onChange={(e) => setEditAccountForm({ ...editAccountForm, is_in_stock: e.target.value === "true" })}
+                  className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-xs text-foreground focus:border-cyan-500"
+                >
+                  <option value="true">In Stock (Available)</option>
+                  <option value="false">Out of Stock</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Specifications / Deliverable Info</label>
+              <Input
+                value={editAccountForm.description}
+                onChange={(e) => setEditAccountForm({ ...editAccountForm, description: e.target.value })}
+                className="bg-slate-900 text-xs"
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" onClick={() => setIsEditAccountOpen(false)} className="text-xs">Cancel</Button>
+              <Button type="submit" className="bg-cyan-500 text-black font-bold text-xs">Save Account Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
     </ProtectedRoute>
   );

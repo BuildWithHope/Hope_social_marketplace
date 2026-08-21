@@ -25,6 +25,7 @@ class Service(models.Model):
     max_order = models.IntegerField(default=100000)
     description = models.TextField(blank=True)
     badge = models.CharField(max_length=50, blank=True, null=True)
+    stock_count = models.IntegerField(default=1000)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -38,6 +39,7 @@ class AccountItem(models.Model):
     year = models.IntegerField(default=2022)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     country = models.CharField(max_length=50, default="USA")
+    stock_count = models.IntegerField(default=10)
     is_in_stock = models.BooleanField(default=True)
     badge = models.CharField(max_length=50, blank=True, null=True)
     icon_name = models.CharField(max_length=50, default="Instagram")

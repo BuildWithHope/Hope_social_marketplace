@@ -1,13 +1,7 @@
-import {
-  Instagram, Facebook, Twitter, Youtube, Linkedin,
-  Send, MessageCircle, Music2, Camera, Ghost,
-} from "lucide-react";
+import { platformIcons as authenticPlatformIcons, getPlatformIcon } from "@/components/icons/platform-icons";
 
-export const platformIcons = {
-  Instagram, Facebook, TikTok: Music2, "Twitter/X": Twitter,
-  Telegram: Send, Discord: MessageCircle, YouTube: Youtube,
-  LinkedIn: Linkedin, Pinterest: Camera, Snapchat: Ghost,
-};
+export { getPlatformIcon };
+export const platformIcons = authenticPlatformIcons;
 
 export const platforms = [
   "Instagram","Facebook","TikTok","Twitter/X","Telegram",

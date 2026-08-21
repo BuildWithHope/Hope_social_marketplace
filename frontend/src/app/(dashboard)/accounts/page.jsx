@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/tabs";
 import { accounts, platforms, platformIcons } from "@/data/mock";
 import { toast } from "sonner";
-import { placeOrder, getPaymentConfig, getUserProfile } from "@/lib/api";
+import { placeOrder, getPaymentConfig, getUserProfile, getAccounts } from "@/lib/api";
 
 
 // Country Flag Emoji Mapping
@@ -126,12 +126,20 @@ export default function AccountsPage() {
   const [user, setUser] = useState(null);
   const [isDeliverableModalOpen, setIsDeliverableModalOpen] = useState(false);
   const [deliverableOrder, setDeliverableOrder] = useState(null);
+  const [dbAccounts, setDbAccounts] = useState(null);
 
   useEffect(() => {
     getUserProfile().then((u) => setUser(u)).catch(() => null);
     getPaymentConfig().then((cfg) => {
       if (cfg) setPaymentConfig(cfg);
     }).catch(() => null);
+
+    getAccounts().then((data) => {
+      const resList = Array.isArray(data) ? data : (data?.results || []);
+      setDbAccounts(resList);
+    }).catch(() => {
+      setDbAccounts(null);
+    });
 
     if (typeof window !== "undefined" && !window.FlutterwaveCheckout) {
       const script = document.createElement("script");
@@ -146,18 +154,19 @@ export default function AccountsPage() {
   const accountNumber = paymentConfig?.account_number || process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || "2034829102";
   const flwPublicKey = paymentConfig?.flutterwave_public_key || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-demo-key";
 
+  const activeAccounts = dbAccounts !== null ? dbAccounts : accounts;
+
   const list = useMemo(() => {
-    let s = accounts.filter((a) =>
-      (selectedPlatform === "all" || a.platform === selectedPlatform) &&
-      (countryFilter === "all" || a.country === countryFilter) &&
-      (q === "" || `${a.platform} ${a.country} ${a.followers}`.toLowerCase().includes(q.toLowerCase())),
+    let s = activeAccounts.filter((a) =>
+      (selectedPlatform === "all" || a.platform?.toLowerCase() === selectedPlatform.toLowerCase()) &&
+      (countryFilter === "all" || a.country?.toLowerCase() === countryFilter.toLowerCase()) &&
+      (q === "" || `${a.name || ''} ${a.platform || ''} ${a.category || ''} ${a.country || ''} ${a.followers || ''}`.toLowerCase().includes(q.toLowerCase()))
     );
-    if (sort === "price-asc") s = [...s].sort((a, b) => a.price - b.price);
-    if (sort === "price-desc") s = [...s].sort((a, b) => b.price - a.price);
-    if (sort === "followers") s = [...s].sort((a, b) => b.followers - a.followers);
-    if (sort === "age") s = [...s].sort((a, b) => b.ageMonths - a.ageMonths);
+    if (sort === "price-asc") s = [...s].sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0));
+    if (sort === "price-desc") s = [...s].sort((a, b) => parseFloat(b.price || 0) - parseFloat(a.price || 0));
+    if (sort === "followers") s = [...s].sort((a, b) => parseInt(b.followers || 0) - parseInt(a.followers || 0));
     return s;
-  }, [q, selectedPlatform, countryFilter, sort]);
+  }, [activeAccounts, q, selectedPlatform, countryFilter, sort]);
 
   const openBuyModal = (account) => {
     setSelectedAccount(account);
@@ -916,7 +925,7 @@ export default function AccountsPage() {
 
             {/* Multi-Tab Payment Options */}
             <Tabs defaultValue="bank" className="w-full mt-2" onValueChange={setPaymentTab}>
-              <TabsList className="grid grid-cols-4 w-full bg-muted/50 p-1">
+              <TabsList className="grid grid-cols-3 w-full bg-muted/50 p-1">
                 <TabsTrigger value="bank" className="text-xs gap-1">
                   <Building2 className="h-3.5 w-3.5" />
                   <span>Transfer</span>
@@ -924,10 +933,6 @@ export default function AccountsPage() {
                 <TabsTrigger value="gateway" className="text-xs gap-1">
                   <Smartphone className="h-3.5 w-3.5" />
                   <span>Flutterwave</span>
-                </TabsTrigger>
-                <TabsTrigger value="card" className="text-xs gap-1">
-                  <CreditCard className="h-3.5 w-3.5" />
-                  <span>Add Card</span>
                 </TabsTrigger>
                 <TabsTrigger value="wallet" className="text-xs gap-1">
                   <Wallet className="h-3.5 w-3.5" />
@@ -1025,60 +1030,7 @@ export default function AccountsPage() {
                 </Button>
               </TabsContent>
 
-              {/* Option 3: Add Card Details */}
-              <TabsContent value="card" className="space-y-3 pt-3">
-                <div className="rounded-xl border border-border/60 bg-card p-4 space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Cardholder Name</label>
-                    <Input
-                      placeholder="e.g. Hope Johnson"
-                      value={cardForm.name}
-                      onChange={(e) => setCardForm({ ...cardForm, name: e.target.value })}
-                      className="mt-1 bg-muted/40"
-                    />
-                  </div>
 
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Card Number</label>
-                    <Input
-                      placeholder="5399 •••• •••• ••••"
-                      value={cardForm.number}
-                      onChange={(e) => setCardForm({ ...cardForm, number: e.target.value })}
-                      className="mt-1 bg-muted/40 font-mono"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground">Expiry Date</label>
-                      <Input
-                        placeholder="MM/YY"
-                        value={cardForm.expiry}
-                        onChange={(e) => setCardForm({ ...cardForm, expiry: e.target.value })}
-                        className="mt-1 bg-muted/40 font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground">CVV / Security Code</label>
-                      <Input
-                        placeholder="123"
-                        maxLength={4}
-                        value={cardForm.cvv}
-                        onChange={(e) => setCardForm({ ...cardForm, cvv: e.target.value })}
-                        className="mt-1 bg-muted/40 font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full font-bold py-5 bg-emerald-500 hover:bg-emerald-600 text-black shadow-md gap-2"
-                  onClick={() => handleCompletePayment("Debit/Credit Card")}
-                >
-                  <Lock className="h-4 w-4" />
-                  <span>Submit & Pay ₦{checkoutItem.totalAmount.toLocaleString()}</span>
-                </Button>
-              </TabsContent>
 
               {/* Option 4: Pay with Wallet Balance */}
               <TabsContent value="wallet" className="space-y-4 pt-3">
