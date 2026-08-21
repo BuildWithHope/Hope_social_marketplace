@@ -43,6 +43,7 @@ class AccountItem(models.Model):
     is_in_stock = models.BooleanField(default=True)
     badge = models.CharField(max_length=50, blank=True, null=True)
     icon_name = models.CharField(max_length=50, default="Instagram")
+    description = models.TextField(blank=True, default="", help_text="Login credentials, email, or account specs")
 
     def __str__(self):
         return f"{self.platform} ({self.year}) - {self.name}"

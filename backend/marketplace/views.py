@@ -262,7 +262,8 @@ class OrderListCreateView(APIView):
 
                 total_amount = account_item.price * Decimal(quantity)
                 item_name = f"{account_item.platform} Aged Account ({account_item.name})"
-                deliverables = f"=== ACCOUNT ACCESS & CREDENTIALS ===\nAccount Title: {account_item.name}\nPlatform: {account_item.platform} ({account_item.year})\nCountry: {account_item.country}\n\nLogin Specs / Credentials:\n{account_item.description}\n\nDate Issued: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                account_desc = getattr(account_item, 'description', '') or f"Account Title: {account_item.name}\nPlatform: {account_item.platform} ({account_item.year})"
+                deliverables = f"=== ACCOUNT ACCESS & CREDENTIALS ===\nAccount Title: {account_item.name}\nPlatform: {account_item.platform} ({account_item.year})\nCountry: {account_item.country}\n\nLogin Specs / Credentials:\n{account_desc}\n\nDate Issued: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
             # If user selected Wallet Balance as payment method, verify & deduct balance
             if payment_method == 'Wallet Balance':

@@ -628,9 +628,14 @@ export default function AccountsPage() {
                         </div>
                       </div>
 
-                      <Badge className={a.available ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-muted text-muted-foreground"}>
-                        {a.available ? "Available" : "Sold"}
-                      </Badge>
+                      {(() => {
+                        const isAvailable = a.is_in_stock !== false && a.is_active !== false && a.in_stock !== false && a.inStock !== false && a.available !== false;
+                        return (
+                          <Badge className={isAvailable ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 font-bold" : "bg-muted text-muted-foreground"}>
+                            {isAvailable ? "Available" : "Sold"}
+                          </Badge>
+                        );
+                      })()}
                     </div>
 
                     {/* Country & Age Pill Badges */}
@@ -694,7 +699,7 @@ export default function AccountsPage() {
                       </div>
                     </div>
                     {(() => {
-                      const isAvailable = a.available !== false && a.is_active !== false && a.in_stock !== false && a.inStock !== false && (a.stock_count === undefined || a.stock_count > 0);
+                      const isAvailable = a.is_in_stock !== false && a.is_active !== false && a.in_stock !== false && a.inStock !== false && a.available !== false;
                       return (
                         <Button
                           size="sm"
@@ -778,7 +783,7 @@ export default function AccountsPage() {
                       </td>
                       <td className="p-4 text-right">
                         {(() => {
-                          const isAvailable = a.available !== false && a.is_active !== false && a.in_stock !== false && a.inStock !== false && (a.stock_count === undefined || a.stock_count > 0);
+                          const isAvailable = a.is_in_stock !== false && a.is_active !== false && a.in_stock !== false && a.inStock !== false && a.available !== false;
                           return (
                             <Button
                               size="sm"
