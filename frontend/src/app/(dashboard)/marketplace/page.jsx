@@ -130,7 +130,7 @@ export default function Marketplace() {
   const accountNumber = paymentConfig?.account_number || process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || "2034829102";
   const flwPublicKey = paymentConfig?.flutterwave_public_key || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-demo-key";
 
-  const activeServices = dbServices !== null ? dbServices : mockServices;
+  const activeServices = dbServices || [];
 
   const filtered = useMemo(() => {
     let s = activeServices.filter((x) => {
@@ -295,8 +295,19 @@ export default function Marketplace() {
       </Card>
 
       {/* Services Grid with Brand Logos */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {paged.map((s) => {
+      {filtered.length === 0 ? (
+        <Card className="border-border/60 bg-card/60 py-16 text-center shadow-sm">
+          <CardContent className="space-y-3">
+            <Sparkles className="mx-auto h-10 w-10 text-muted-foreground/60" />
+            <h3 className="text-base font-bold text-foreground">No Services Found</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              There are no growth services matching your selected platform or search query. Create services in Admin Controls to display them here!
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {paged.map((s) => {
           const Icon = platformIcons[s.platform] || Sparkles;
           const style = platformStyles[s.platform] || {
             badgeBg: "bg-primary/15 text-primary border-primary/30",
@@ -385,6 +396,7 @@ export default function Marketplace() {
           );
         })}
       </div>
+      )}
 
       {/* Pagination */}
       <div className="mt-6 flex justify-center">

@@ -154,7 +154,7 @@ export default function AccountsPage() {
   const accountNumber = paymentConfig?.account_number || process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || "2034829102";
   const flwPublicKey = paymentConfig?.flutterwave_public_key || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-demo-key";
 
-  const activeAccounts = dbAccounts !== null ? dbAccounts : accounts;
+  const activeAccounts = dbAccounts || [];
 
   const list = useMemo(() => {
     let s = activeAccounts.filter((a) =>
