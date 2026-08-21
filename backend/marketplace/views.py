@@ -277,7 +277,8 @@ class OrderListCreateView(APIView):
                 request.user.save()
 
             provider_order_id = None
-            is_instant_payment = payment_method in ['Wallet Balance', 'Flutterwave', 'Flutterwave Gateway', 'Debit/Credit Card', 'Card'] or any(kw in payment_method.lower() for kw in ['flutterwave', 'card', 'wallet'])
+            is_bank_transfer = any(kw in str(payment_method).lower() for kw in ['bank', 'transfer'])
+            is_instant_payment = not is_bank_transfer
             order_status = 'Completed' if is_instant_payment else 'Pending'
 
             # If connected to a supplier API for SMM service, forward order to supplier
@@ -313,19 +314,19 @@ class OrderListCreateView(APIView):
                 user=request.user,
                 transaction_type='Order Payment',
                 amount=total_amount,
-                status='Pending' if payment_method == 'Direct Bank Transfer' else 'Completed',
+                status='Pending' if is_bank_transfer else 'Completed',
                 method=payment_method,
                 reference=tx_ref
             )
 
             # Generate User Notification
-            if payment_method == 'Direct Bank Transfer':
+            if is_bank_transfer:
                 Notification.objects.create(
                     user=request.user,
-                    title=f"Order #{order.id} Submitted (Processing)",
-                    message=f"Your payment of ₦{total_amount:,.2f} for '{item_name}' via Direct Bank Transfer is currently Processing awaiting admin payment confirmation."
+                    title=f"Order #{order.id} Submitted (Awaiting Approval)",
+                    message=f"Your payment of ₦{total_amount:,.2f} for '{item_name}' via Direct Bank Transfer is Awaiting Admin Approval."
                 )
-                response_msg = f"Order for '{item_name}' submitted! Status: Processing (Awaiting admin bank transfer confirmation)."
+                response_msg = f"Order for '{item_name}' submitted! Status: Pending (Awaiting Admin Approval)."
             else:
                 Notification.objects.create(
                     user=request.user,

@@ -191,8 +191,8 @@ export default function TransactionsPage() {
                         </TableRow>
                       ) : (
                         orders.map((o) => {
-                          const isCompleted = o.status === "Completed" || o.status === "Completed / Active";
-                          const isPending = o.status === "Pending" || o.status === "Pending Approval";
+                          const isCompleted = String(o.status || '').toLowerCase() === "completed" || String(o.status || '').toLowerCase() === "completed / active";
+                          const isPending = !isCompleted;
 
                           return (
                             <TableRow key={o.id} className="border-border/40 hover:bg-muted/20">
@@ -205,7 +205,7 @@ export default function TransactionsPage() {
                                 ₦{parseFloat(o.total_amount || 0).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
                               </TableCell>
                               <TableCell>
-                                <StatusBadge status={o.status || "Completed"} />
+                                <StatusBadge status={o.status || "Pending"} />
                               </TableCell>
                               <TableCell className="text-muted-foreground text-xs font-mono">
                                 {o.date || o.created_at ? new Date(o.date || o.created_at).toLocaleDateString() : "Recently"}
