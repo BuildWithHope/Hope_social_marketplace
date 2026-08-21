@@ -25,7 +25,7 @@ import {
   PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
 import { services as mockServices, platforms, platformIcons } from "@/data/mock";
-import { placeOrder, getPaymentConfig, getUserProfile } from "@/lib/api";
+import { placeOrder, getPaymentConfig, getUserProfile, getServices } from "@/lib/api";
 import { toast } from "sonner";
 
 
@@ -106,6 +106,7 @@ export default function Marketplace() {
 
   const [paymentConfig, setPaymentConfig] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [dbServices, setDbServices] = useState(null);
 
   useEffect(() => {
     getPaymentConfig().then((cfg) => {
@@ -115,6 +116,13 @@ export default function Marketplace() {
     getUserProfile().then((u) => {
       if (u) setUserProfile(u);
     }).catch(() => null);
+
+    getServices().then((data) => {
+      const list = Array.isArray(data) ? data : (data?.results || []);
+      setDbServices(list);
+    }).catch(() => {
+      setDbServices(null);
+    });
   }, []);
 
   const bankName = paymentConfig?.bank_name || process.env.NEXT_PUBLIC_BANK_NAME || "Moniepoint / GTBank";
@@ -122,17 +130,23 @@ export default function Marketplace() {
   const accountNumber = paymentConfig?.account_number || process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || "2034829102";
   const flwPublicKey = paymentConfig?.flutterwave_public_key || process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-demo-key";
 
+  const activeServices = dbServices !== null ? dbServices : mockServices;
 
   const filtered = useMemo(() => {
-    let s = mockServices.filter((x) =>
-      (platform === "all" || x.platform === platform) &&
-      (q === "" || x.name.toLowerCase().includes(q.toLowerCase()) || (x.category && x.category.toLowerCase().includes(q.toLowerCase()))),
-    );
-    const getRate = (item) => parseFloat(item.rate_per_1k || item.price || 0);
+    let s = activeServices.filter((x) => {
+      const matchPlatform = platform === "all" ||
+        (x.platform && x.platform.toLowerCase() === platform.toLowerCase()) ||
+        (x.category && x.category.toLowerCase().includes(platform.toLowerCase()));
+      const matchQuery = q === "" ||
+        x.name.toLowerCase().includes(q.toLowerCase()) ||
+        (x.category && x.category.toLowerCase().includes(q.toLowerCase()));
+      return matchPlatform && matchQuery;
+    });
+    const getRate = (item) => parseFloat(item.rate_per_1k || item.price || item.rate || 0);
     if (sort === "price-asc") s = [...s].sort((a, b) => getRate(a) - getRate(b));
     if (sort === "price-desc") s = [...s].sort((a, b) => getRate(b) - getRate(a));
     return s;
-  }, [q, platform, sort]);
+  }, [activeServices, q, platform, sort]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -225,14 +239,17 @@ export default function Marketplace() {
         >
           <Sparkles className="h-4 w-4" />
           <span>All Platforms</span>
-          <span className="ml-1 rounded-full bg-black/20 px-2 py-0.5 text-[10px]">{mockServices.length}</span>
+          <span className="ml-1 rounded-full bg-black/20 px-2 py-0.5 text-[10px]">{activeServices.length}</span>
         </button>
 
         {platforms.map((p) => {
           const Icon = platformIcons[p] || Sparkles;
           const style = platformStyles[p];
           const isSelected = platform === p;
-          const count = mockServices.filter((s) => s.platform === p).length;
+          const count = activeServices.filter((s) =>
+            (s.platform && s.platform.toLowerCase() === p.toLowerCase()) ||
+            (s.category && s.category.toLowerCase().includes(p.toLowerCase()))
+          ).length;
 
           return (
             <button

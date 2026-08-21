@@ -466,7 +466,8 @@ class FlutterwaveVerifyView(APIView):
                         "transaction": TransactionSerializer(existing_tx).data
                     })
 
-            secret_key = os.environ.get("FLUTTERWAVE_SECRET_KEY", "").strip()
+            setting = PaymentSetting.objects.first()
+            secret_key = (setting.flutterwave_secret_key.strip() if setting and setting.flutterwave_secret_key else None) or os.environ.get("FLUTTERWAVE_SECRET_KEY", "").strip()
             verified = False
             verified_amount = None
 
