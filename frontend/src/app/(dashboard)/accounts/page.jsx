@@ -260,17 +260,9 @@ export default function AccountsPage() {
               target_link: `Account Purchase: ${item.title}`,
               payment_method: "Flutterwave Gateway",
             });
-            toast.success(`Payment verified! Order completed for '${item.title}'`);
+            toast.success(`Payment verified! Access and download your account credentials anytime from your Dashboard Transactions page.`);
             setIsPaymentModalOpen(false);
             if (item?.isCart) setCart([]);
-            setDeliverableOrder(res?.order || {
-              id: item.reference,
-              service_name: item.title,
-              quantity: item.quantity,
-              total_amount: item.totalAmount,
-              created_at: new Date().toISOString(),
-            });
-            setIsDeliverableModalOpen(true);
           } catch (err) {
             toast.error(err.message || "Failed to place order after payment.");
           }
@@ -296,19 +288,17 @@ export default function AccountsPage() {
           target_link: `Account Purchase: ${checkoutItem.title}`,
           payment_method: methodName,
         });
-        toast.success(`Order for '${checkoutItem?.title}' placed via ${methodName}!`);
+
+        setIsPaymentModalOpen(false);
         if (checkoutItem?.isCart) {
           setCart([]);
         }
-        setIsPaymentModalOpen(false);
-        setDeliverableOrder(res?.order || {
-          id: checkoutItem.reference,
-          service_name: checkoutItem.title,
-          quantity: checkoutItem.quantity,
-          total_amount: checkoutItem.totalAmount,
-          created_at: new Date().toISOString(),
-        });
-        setIsDeliverableModalOpen(true);
+
+        if (methodName === "Bank Transfer" || methodName === "Direct Bank Transfer") {
+          toast.success(`Order placed via Direct Bank Transfer! Awaiting Admin Approval. Once approved, your credentials will be available on your Dashboard Transactions page.`);
+        } else {
+          toast.success(`Payment successful! You can view and download your account credentials anytime from your Dashboard Transactions page.`);
+        }
       }
     } catch (err) {
       toast.error(err.message || "Failed to place order.");
@@ -837,8 +827,8 @@ export default function AccountsPage() {
                     </span>
                     <span className="font-bold">{selectedAccount.platform} ({selectedAccount.id})</span>
                   </div>
-                  <Badge variant="outline" className="font-semibold">
-                    {selectedAccount.ageMonths} Months Aged
+                  <Badge variant="outline" className="font-semibold text-emerald-400 border-emerald-500/30">
+                    {selectedAccount.year ? `Year ${selectedAccount.year}` : (selectedAccount.ageYears ? `${selectedAccount.ageYears} Years` : 'Aged Account')}
                   </Badge>
                 </div>
 
@@ -846,7 +836,7 @@ export default function AccountsPage() {
                   <div className="rounded-lg bg-background p-2 border border-border/40">
                     <div className="text-muted-foreground">Followers</div>
                     <div className="font-bold text-sm">
-                      {selectedAccount.followers >= 1000 ? `${(selectedAccount.followers / 1000).toFixed(1)}k` : selectedAccount.followers}
+                      {selectedAccount.followers ? (isNaN(selectedAccount.followers) ? selectedAccount.followers : (parseFloat(selectedAccount.followers) >= 1000 ? `${(parseFloat(selectedAccount.followers) / 1000).toFixed(1)}k` : selectedAccount.followers)) : "10k"}
                     </div>
                   </div>
                   <div className="rounded-lg bg-background p-2 border border-border/40">
